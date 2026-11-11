@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Component
+@ConditionalOnProperty(name = "telegram.bot.token", matchIfMissing = false)
 public class TelegramBotService implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(TelegramBotService.class);
@@ -179,7 +181,11 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
                 return;
             }
 
-            Recipe savedRecipe = recipeService.saveRecipeFromDTO(chatId, userName, dto, "[Áudio gravado]");
+            String transcriptToSave = (dto.transcription() != null && !dto.transcription().isBlank())
+                ? dto.transcription()
+                : "[Áudio gravado]";
+
+            Recipe savedRecipe = recipeService.saveRecipeFromDTO(chatId, userName, dto, transcriptToSave);
 
             String formattedResponse = "✅ <b>Áudio processado e receita salva!</b>\n\n" + 
                                        recipeService.formatRecipeForTelegram(savedRecipe) +

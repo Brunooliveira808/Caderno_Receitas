@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ChefBot Culinário</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            chef: {
+              yellow: '#F59E0B',
+              yellowLight: '#FEF3C7',
+              yellowHover: '#D97706',
+              red: '#EF4444',
+              redLight: '#FEE2E2',
+              redHover: '#DC2626',
+              bg: '#FDFCF7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Estilos mobile e toques refinados */
+    body {
+      background-color: #FAF8F5;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .pulse-record {
+      animation: pulse-red 1.5s infinite;
+    }
+    @keyframes pulse-red {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+      70% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+  </style>
+</head>
+<body class="text-neutral-800 antialiased font-sans select-none pb-24">
+
+  <!-- APP CONTAINER (Mobile Frame Centralizado em telas grandes) -->
+  <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative">
+
+    <!-- HEADER / TOPO -->
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-amber-100 px-5 pt-5 pb-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-300 flex items-center justify-center shadow-md shadow-amber-200">
+            <i data-lucide="utensils" class="w-6 h-6 text-amber-950"></i>
+          </div>
+          <div>
+            <h1 class="text-xl font-black tracking-tight text-neutral-900 flex items-center gap-1.5">
+              ChefBot <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+            </h1>
+            <p class="text-xs text-neutral-500 font-medium">Caderno Inteligente de Receitas</p>
+          </div>
+        </div>
+
+        <button onclick="fetchRecipes()" class="p-2.5 rounded-full hover:bg-neutral-100 text-neutral-600 transition" title="Atualizar">
+          <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- FILTROS POR CATEGORIA -->
+      <div class="mt-4 flex gap-2 overflow-x-auto hide-scrollbar py-1 text-sm font-medium">
+        <button onclick="setFilter('Todos')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-amber-400 text-amber-950 shadow-sm font-semibold" data-category="Todos">
+          Todos
+        </button>
+        <button onclick="setFilter('café da manhã')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="café da manhã">
+          Café da manhã
+        </button>
+        <button onclick="setFilter('almoço')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="almoço">
+          Almoço
+        </button>
+        <button onclick="setFilter('lanche')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="lanche">
+          Lanche
+        </button>
+        <button onclick="setFilter('jantar')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="jantar">
+          Jantar
+        </button>
+        <button onclick="setFilter('ceia')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="ceia">
+          Ceia
+        </button>
+        <button onclick="setFilter('sobremesa')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="sobremesa">
+          Sobremesa
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTEÚDO PRINCIPAL / LISTA DE RECEITAS -->
+    <main class="flex-1 p-4">
+      <div id="loading" class="hidden flex flex-col items-center justify-center py-16 gap-3 text-neutral-400">
+        <div class="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-sm font-medium">Buscando delícias...</p>
+      </div>
+
+      <div id="empty-state" class="hidden flex flex-col items-center justify-center py-16 px-6 text-center">
+        <div class="w-16 h-16 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mb-3">
+          <i data-lucide="cooking-pot" class="w-8 h-8"></i>
+        </div>
+        <h3 class="font-bold text-neutral-800 text-base">Nenhuma receita nesta categoria</h3>
+        <p class="text-xs text-neutral-500 mt-1 max-w-xs">Adicione uma receita falando no microfone ou escrevendo no botão abaixo!</p>
+      </div>
+
+      <div id="recipe-list" class="flex flex-col gap-3">
+        <!-- Cards inseridos dinamicamente -->
+      </div>
+    </main>
+
+    <!-- BARRA INFERIOR FLUTUANTE: BOTÃO ADICIONAR -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-gradient-to-t from-white via-white/95 to-transparent p-4 flex justify-center z-20 pointer-events-none">
+      <button onclick="openAddModal()" class="pointer-events-auto bg-amber-400 hover:bg-amber-500 text-amber-950 px-6 py-3.5 rounded-full font-bold shadow-lg shadow-amber-300/60 flex items-center gap-2.5 transition transform active:scale-95 border-2 border-white">
+        <div class="w-6 h-6 rounded-full bg-white flex items-center justify-center text-amber-600 shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+        </div>
+        <span>Nova Receita</span>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-red-500 text-white font-medium ml-1">Áudio / Texto</span>
+      </button>
+    </nav>
+
+    <!-- ================= MODAIS ================= -->
+
+    <!-- MODAL 1: DETALHES DA RECEITA (Bottom Sheet) -->
+    <div id="modal-details" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex flex-col justify-end transition-opacity">
+      <div class="bg-white rounded-t-3xl max-h-[88vh] overflow-y-auto w-full p-6 relative shadow-2xl flex flex-col animate-slide-up">
+        
+        <!-- Puxador -->
+        <div class="w-12 h-1.5 bg-neutral-200 rounded-full mx-auto mb-4 cursor-pointer" onclick="closeDetailsModal()"></div>
+
+        <!-- Cabeçalho do Detalhe -->
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <span id="detail-category-badge" class="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200"></span>
+            <h2 id="detail-title" class="text-2xl font-black text-neutral-900 mt-2 leading-tight"></h2>
+            <div class="flex items-center gap-4 text-xs text-neutral-500 mt-2">
+              <span id="detail-time" class="flex items-center gap-1"></span>
+              <span id="detail-portions" class="flex items-center gap-1"></span>
+              <span id="detail-author" class="flex items-center gap-1"></span>
+            </div>
+          </div>
+          <button onclick="closeDetailsModal()" class="p-2 text-neutral-400 hover:text-neutral-700 rounded-full hover:bg-neutral-100">
+            <i data-lucide="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+
+        <hr class="my-5 border-neutral-100">
+
+        <!-- Ingredientes -->
+        <div>
+          <h3 class="text-sm font-bold uppercase tracking-wider text-amber-700 flex items-center gap-2 mb-3">
+            <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+            Ingredientes
+          </h3>
+          <ul id="detail-ingredients" class="space-y-2 text-sm text-neutral-700">
+            <!-- Ingredientes dinâmicos -->
+          </ul>
+        </div>
+
+        <hr class="my-5 border-neutral-100">
+
+        <!-- Modo de Preparo -->
+        <div>
+          <h3 class="text-sm font-bold uppercase tracking-wider text-amber-700 flex items-center gap-2 mb-3">
+            <i data-lucide="chef-hat" class="w-4 h-4"></i>
+            Modo de Preparo
+          </h3>
+          <ol id="detail-instructions" class="space-y-3 text-sm text-neutral-700">
+            <!-- Passos dinâmicos -->
+          </ol>
+        </div>
+
+        <div class="mt-8 pt-4 border-t border-neutral-100 flex gap-3">
+          <button id="btn-edit-detail" class="flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl flex items-center justify-center gap-2 shadow-sm transition">
+            <i data-lucide="pencil" class="w-4 h-4"></i> Editar
+          </button>
+          <button id="btn-delete-detail" class="px-5 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-2xl flex items-center justify-center gap-2 transition">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 2: ADICIONAR NOVA RECEITA (ÁUDIO OU TEXTO) -->
+    <div id="modal-add" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex flex-col justify-end">
+      <div class="bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto w-full p-6 relative shadow-2xl animate-slide-up">
+        
+        <div class="w-12 h-1.5 bg-neutral-200 rounded-full mx-auto mb-4" onclick="closeAddModal()"></div>
+
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-black text-neutral-900 flex items-center gap-2">
+            Adicionar Receita
+          </h2>
+          <button onclick="closeAddModal()" class="p-2 text-neutral-400 hover:text-neutral-700">
+            <i data-lucide="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+
+        <!-- Abas de Opção: Gravar Áudio ou Digitar -->
+        <div class="flex p-1 bg-neutral-100 rounded-2xl mb-5">
+          <button id="tab-audio-btn" onclick="switchAddTab('audio')" class="flex-1 py-2 text-xs font-bold rounded-xl transition bg-white text-neutral-900 shadow-sm flex items-center justify-center gap-1.5">
+            <i data-lucide="mic" class="w-4 h-4 text-red-500"></i> Por Voz (Áudio)
+          </button>
+          <button id="tab-text-btn" onclick="switchAddTab('text')" class="flex-1 py-2 text-xs font-bold rounded-xl transition text-neutral-500 hover:text-neutral-900 flex items-center justify-center gap-1.5">
+            <i data-lucide="pen-line" class="w-4 h-4"></i> Digitar Texto
+          </button>
+        </div>
+
+        <!-- CONTEÚDO ABA: ÁUDIO -->
+        <div id="tab-audio-content" class="flex flex-col items-center text-center py-4">
+          <p class="text-xs text-neutral-500 mb-6 max-w-xs">
+            Fale a receita com naturalidade (ingredientes, modo de fazer). A IA do ChefBot estruturará tudo automaticamente!
+          </p>
+
+          <!-- Botão Microfone Circular Grande -->
+          <div class="relative mb-4">
+            <button id="record-btn" onclick="toggleRecording()" class="w-24 h-24 rounded-full bg-gradient-to-tr from-amber-400 to-amber-300 text-amber-950 flex flex-col items-center justify-center shadow-xl shadow-amber-200/80 active:scale-95 transition">
+              <i id="record-icon" data-lucide="mic" class="w-8 h-8 text-neutral-900"></i>
+              <span id="record-status-label" class="text-[10px] font-bold uppercase mt-1">Gravar</span>
+            </button>
+          </div>
+
+          <div id="recording-timer" class="text-sm font-semibold text-neutral-500 mb-2 hidden">00:00</div>
+          
+          <div id="audio-preview-container" class="hidden w-full flex flex-col items-center gap-3">
+            <audio id="audio-preview" controls class="w-full h-10 rounded-lg"></audio>
+            <button onclick="submitAudioRecipe()" id="btn-send-audio" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+              <i data-lucide="sparkles" class="w-5 h-5 text-red-600"></i> Extrair Receita com IA
+            </button>
+          </div>
+
+          <!-- Divisor Ou Enviar Arquivo de Áudio -->
+          <div class="mt-4 pt-3 border-t border-neutral-100 w-full flex flex-col items-center">
+            <label for="audio-file-input" class="cursor-pointer text-xs font-semibold text-amber-800 hover:text-amber-950 flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 transition">
+              <i data-lucide="upload" class="w-3.5 h-3.5 text-amber-600"></i> Ou selecione um áudio do celular / WhatsApp
+            </label>
+            <input type="file" id="audio-file-input" accept="audio/*" class="hidden" onchange="handleAudioFileUpload(event)">
+            <p id="audio-file-name" class="text-[11px] text-neutral-400 mt-1 hidden"></p>
+          </div>
+        </div>
+
+        <!-- CONTEÚDO ABA: TEXTO -->
+        <div id="tab-text-content" class="hidden flex flex-col gap-4">
+          <p class="text-xs text-neutral-500">
+            Cole uma mensagem do WhatsApp, ou escreva os ingredientes e o modo de preparo:
+          </p>
+          <textarea id="recipe-text-input" rows="6" placeholder="Ex: Bolo de milho da vó: 1 lata de milho verde, 1 lata de açúcar, 3 ovos... bata tudo no liquidificador e asse a 180 graus por 40 min." class="w-full p-4 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200/50 resize-none"></textarea>
+
+          <button onclick="submitTextRecipe()" id="btn-send-text" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+            <i data-lucide="sparkles" class="w-5 h-5 text-red-600"></i> Extrair e Salvar com IA
+          </button>
+        </div>
+
+        <!-- Indicador de Processamento IA -->
+        <div id="ai-processing" class="hidden mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-3">
+          <div class="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-xs font-semibold text-amber-900">O ChefBot está analisando a receita...</p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MODAL 3: EDITAR RECEITA -->
+    <div id="modal-edit" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex flex-col justify-end">
+      <div class="bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto w-full p-6 relative shadow-2xl animate-slide-up">
+        
+        <div class="w-12 h-1.5 bg-neutral-200 rounded-full mx-auto mb-4" onclick="closeEditModal()"></div>
+
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xl font-black text-neutral-900">Editar Receita</h2>
+          <button onclick="closeEditModal()" class="p-2 text-neutral-400 hover:text-neutral-700">
+            <i data-lucide="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+
+        <!-- Seção 1: Edição Inteligente com IA -->
+        <div class="mb-5 p-3.5 bg-gradient-to-tr from-amber-50 to-orange-50 border border-amber-200 rounded-2xl">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-amber-900 mb-1.5">
+            <i data-lucide="sparkles" class="w-4 h-4 text-amber-600"></i>
+            Pedir alteração para a IA
+          </div>
+          <p class="text-[11px] text-neutral-600 mb-2 leading-relaxed">
+            Diga o que mudar (ex: "troque açúcar por 1 xícara de mel", "mude as porções para 6" ou "o tempo é 45 minutos").
+          </p>
+          <div class="flex gap-2">
+            <input type="text" id="ai-edit-prompt" placeholder="Ex: Adicione 1 colher de canela e troque leite por leite de aveia" class="flex-1 p-2.5 text-xs bg-white border border-amber-200 rounded-xl focus:outline-none focus:border-amber-400">
+            <button type="button" id="btn-apply-ai-edit" onclick="submitAiEditRecipe()" class="px-3 py-2 bg-amber-400 hover:bg-amber-500 text-amber-950 text-xs font-bold rounded-xl transition shadow-sm whitespace-nowrap flex items-center gap-1">
+              <i data-lucide="send" class="w-3.5 h-3.5"></i> Aplicar
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 my-3 text-xs text-neutral-400">
+          <div class="h-px bg-neutral-200 flex-1"></div>
+          <span>ou edite os campos manualmente</span>
+          <div class="h-px bg-neutral-200 flex-1"></div>
+        </div>
+
+        <form id="edit-form" onsubmit="saveEditedRecipe(event)" class="space-y-4 text-xs font-medium text-neutral-700">
+          <input type="hidden" id="edit-id">
+
+          <div>
+            <label class="block font-bold mb-1 text-neutral-800">Título</label>
+            <input type="text" id="edit-title" required class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold mb-1 text-neutral-800">Categoria</label>
+              <select id="edit-category" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400 bg-white">
+                <option value="café da manhã">Café da manhã</option>
+                <option value="almoço">Almoço</option>
+                <option value="lanche">Lanche</option>
+                <option value="jantar">Jantar</option>
+                <option value="ceia">Ceia</option>
+                <option value="sobremesa">Sobremesa</option>
+                <option value="geral">Outros</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1 text-neutral-800">Tempo (minutos)</label>
+              <input type="number" id="edit-prep-time" min="1" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold mb-1 text-neutral-800">Porções / Rendimento</label>
+            <input type="number" id="edit-portions" min="1" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+          </div>
+
+          <div>
+            <label class="block font-bold mb-1 text-neutral-800">Ingredientes (um por linha)</label>
+            <textarea id="edit-ingredients" rows="5" placeholder="Ex: 2 xícaras de farinha&#10;1 colher de manteiga" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400 resize-none font-mono"></textarea>
+          </div>
+
+          <div>
+            <label class="block font-bold mb-1 text-neutral-800">Modo de Preparo (um passo por linha)</label>
+            <textarea id="edit-instructions" rows="6" placeholder="Ex: Misture a farinha e o fermento&#10;Asse por 30 minutos a 180°C" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400 resize-none font-mono"></textarea>
+          </div>
+
+          <button type="submit" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+            Salvar Alterações
+          </button>
+        </form>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SCRIPT DA APLICAÇÃO -->
+  <script>
+    let currentFilter = 'Todos';
+    let allRecipes = [];
+    let selectedRecipe = null;
+
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      fetchRecipes();
+    });
+
+    // 1. CARREGAR RECEITAS
+    async function fetchRecipes() {
+      showLoading(true);
+      try {
+        let url = '/api/recipes';
+        if (currentFilter !== 'Todos') {
+          url += `?category=${encodeURIComponent(currentFilter)}`;
+        }
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Falha ao buscar receitas');
+        allRecipes = await res.json();
+        renderRecipes(allRecipes);
+      } catch (err) {
+        console.error(err);
+        alert('Não foi possível carregar as receitas. Verifique o servidor!');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    function setFilter(cat) {
+      currentFilter = cat;
+      document.querySelectorAll('.category-chip').forEach(chip => {
+        if (chip.getAttribute('data-category').toLowerCase() === cat.toLowerCase()) {
+          chip.className = 'category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-amber-400 text-amber-950 shadow-sm font-semibold';
+        } else {
+          chip.className = 'category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100';
+        }
+      });
+      fetchRecipes();
+    }
+
+    // 2. RENDERIZAR CARDS
+    function renderRecipes(recipes) {
+      const container = document.getElementById('recipe-list');
+      const emptyState = document.getElementById('empty-state');
+      container.innerHTML = '';
+
+      if (!recipes || recipes.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      recipes.forEach(r => {
+        const card = document.createElement('div');
+        card.className = "bg-white border border-amber-100 rounded-3xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between cursor-pointer border-l-4 border-l-amber-400";
+        card.onclick = (e) => {
+          if (!e.target.closest('.action-btn')) {
+            openDetailsModal(r);
+          }
+        };
+
+        const categoryTag = r.category ? r.category : 'Receita';
+        const prepTime = r.prepTimeMinutes ? `${r.prepTimeMinutes} min` : 'Tempo livre';
+        const ingCount = r.ingredients ? r.ingredients.length : 0;
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 mb-1">
+                ${categoryTag}
+              </span>
+              <h3 class="font-bold text-base text-neutral-900 leading-snug">${r.title || 'Receita sem título'}</h3>
+            </div>
+            
+            <!-- Botões de Ação Rápida -->
+            <div class="flex items-center gap-1 action-btn">
+              <button onclick="openEditModal(${r.id})" class="p-2 text-neutral-400 hover:text-amber-600 rounded-xl hover:bg-amber-50 transition" title="Editar">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+              <button onclick="deleteRecipe(${r.id})" class="p-2 text-neutral-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition" title="Excluir">
+                <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-4 flex items-center justify-between text-xs text-neutral-500 pt-2 border-t border-neutral-100">
+            <span class="flex items-center gap-1">
+              <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i>
+              ${prepTime}
+            </span>
+            <span class="flex items-center gap-1">
+              <i data-lucide="shopping-basket" class="w-3.5 h-3.5 text-neutral-400"></i>
+              ${ingCount} ingredientes
+            </span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    // 3. DETALHES DA RECEITA
+    function openDetailsModal(recipe) {
+      selectedRecipe = recipe;
+      document.getElementById('detail-title').innerText = recipe.title || 'Receita';
+      document.getElementById('detail-category-badge').innerText = recipe.category || 'Geral';
+      
+      document.getElementById('detail-time').innerHTML = `<i data-lucide="clock" class="w-4 h-4 text-amber-600"></i> ${recipe.prepTimeMinutes ? recipe.prepTimeMinutes + ' min' : 'Tempo variado'}`;
+      document.getElementById('detail-portions').innerHTML = `<i data-lucide="users" class="w-4 h-4 text-amber-600"></i> ${recipe.portions ? recipe.portions + ' porções' : 'Porções livres'}`;
+      document.getElementById('detail-author').innerHTML = recipe.sourceAuthor ? `<i data-lucide="user" class="w-4 h-4"></i> ${recipe.sourceAuthor}` : '';
+
+      // Lista de ingredientes interativa (com checkbox)
+      const ingList = document.getElementById('detail-ingredients');
+      ingList.innerHTML = '';
+      if (recipe.ingredients && recipe.ingredients.length > 0) {
+        recipe.ingredients.forEach(i => {
+          const li = document.createElement('li');
+          li.className = "flex items-start gap-2.5 p-2 rounded-xl hover:bg-amber-50/50 transition cursor-pointer";
+          li.innerHTML = `
+            <input type="checkbox" class="mt-1 rounded text-amber-500 focus:ring-amber-400">
+            <div>
+              <span class="font-semibold">${i.name}</span>
+              ${i.quantity ? `<span class="text-neutral-500"> - ${i.quantity} ${i.unit || ''}</span>` : ''}
+              ${i.notes ? `<span class="text-xs text-neutral-400 italic block">${i.notes}</span>` : ''}
+            </div>
+          `;
+          li.onclick = (e) => {
+            if (e.target.tagName !== 'INPUT') {
+              const cb = li.querySelector('input');
+              cb.checked = !cb.checked;
+            }
+          };
+          ingList.appendChild(li);
+        });
+      } else {
+        ingList.innerHTML = '<li class="text-xs text-neutral-400">Nenhum ingrediente especificado.</li>';
+      }
+
+      // Passos de preparo
+      const instList = document.getElementById('detail-instructions');
+      instList.innerHTML = '';
+      if (recipe.instructions && recipe.instructions.length > 0) {
+        recipe.instructions.forEach(step => {
+          const li = document.createElement('li');
+          li.className = "flex gap-3 items-start";
+          li.innerHTML = `
+            <span class="w-6 h-6 rounded-full bg-amber-400 text-amber-950 font-black text-xs flex items-center justify-center shrink-0">
+              ${step.stepNumber}
+            </span>
+            <p class="text-neutral-700 leading-relaxed">${step.description}</p>
+          `;
+          instList.appendChild(li);
+        });
+      } else {
+        instList.innerHTML = '<li class="text-xs text-neutral-400">Nenhum passo especificado.</li>';
+      }
+
+      document.getElementById('btn-edit-detail').onclick = () => {
+        closeDetailsModal();
+        openEditModal(recipe.id);
+      };
+
+      document.getElementById('btn-delete-detail').onclick = () => {
+        closeDetailsModal();
+        deleteRecipe(recipe.id);
+      };
+
+      document.getElementById('modal-details').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('modal-details').classList.add('hidden');
+    }
+
+    // 4. EXCLUIR RECEITA
+    async function deleteRecipe(id) {
+      if (!confirm('Deseja realmente deletar esta receita?')) return;
+      try {
+        const res = await fetch(`/api/recipes/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          fetchRecipes();
+        } else {
+          alert('Erro ao excluir a receita.');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Erro ao se comunicar com o servidor.');
+      }
+    }
+
+    // 5. MODAL DE ADIÇÃO (Áudio / Texto)
+    function openAddModal() {
+      document.getElementById('modal-add').classList.remove('hidden');
+      switchAddTab('audio');
+      resetAudioRecordingState();
+    }
+
+    function closeAddModal() {
+      document.getElementById('modal-add').classList.add('hidden');
+      stopAudioRecordingIfActive();
+    }
+
+    function switchAddTab(tab) {
+      const isAudio = tab === 'audio';
+      document.getElementById('tab-audio-btn').className = isAudio 
+        ? 'flex-1 py-2 text-xs font-bold rounded-xl transition bg-white text-neutral-900 shadow-sm flex items-center justify-center gap-1.5'
+        : 'flex-1 py-2 text-xs font-bold rounded-xl transition text-neutral-500 hover:text-neutral-900 flex items-center justify-center gap-1.5';
+
+      document.getElementById('tab-text-btn').className = !isAudio
+        ? 'flex-1 py-2 text-xs font-bold rounded-xl transition bg-white text-neutral-900 shadow-sm flex items-center justify-center gap-1.5'
+        : 'flex-1 py-2 text-xs font-bold rounded-xl transition text-neutral-500 hover:text-neutral-900 flex items-center justify-center gap-1.5';
+
+      document.getElementById('tab-audio-content').classList.toggle('hidden', !isAudio);
+      document.getElementById('tab-text-content').classList.toggle('hidden', isAudio);
+    }
+
+    // ENVIO POR TEXTO
+    async function submitTextRecipe() {
+      const text = document.getElementById('recipe-text-input').value.trim();
+      if (!text) {
+        alert('Por favor, digite a receita.');
+        return;
+      }
+
+      setAiProcessing(true);
+      try {
+        const res = await fetch('/api/recipes/from-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById('recipe-text-input').value = '';
+          closeAddModal();
+          fetchRecipes();
+        } else {
+          alert(data.error || 'Erro ao processar receita.');
+        }
+      } catch (e) {
+        alert('Erro de conexão ao processar receita.');
+      } finally {
+        setAiProcessing(false);
+      }
+    }
+
+    // DETECÇÃO DE MIME TYPE DE ÁUDIO COMPATÍVEL (Android / iOS / Desktop)
+    function getSupportedAudioMimeType() {
+      const candidates = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/aac',
+        'audio/ogg;codecs=opus',
+        'audio/ogg'
+      ];
+      if (typeof MediaRecorder === 'undefined') return '';
+      for (const mime of candidates) {
+        if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mime)) {
+          return mime;
+        }
+      }
+      return '';
+    }
+
+    // GRAVAÇÃO DE ÁUDIO VIA NAVEGADOR
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let audioBlob = null;
+    let timerInterval = null;
+    let secondsElapsed = 0;
+    let recordedMimeType = 'audio/webm';
+
+    async function toggleRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        clearInterval(timerInterval);
+        document.getElementById('record-btn').classList.remove('pulse-record', 'bg-red-500');
+        document.getElementById('record-btn').classList.add('bg-amber-400');
+        document.getElementById('record-status-label').innerText = 'Gravar';
+      } else {
+        try {
+          // Filtros nativos de voz para ambiente de cozinha (reduz ruído e eco)
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+              channelCount: 1
+            }
+          });
+
+          audioChunks = [];
+          recordedMimeType = getSupportedAudioMimeType() || 'audio/webm';
+          
+          const options = recordedMimeType ? { mimeType: recordedMimeType } : {};
+          mediaRecorder = new MediaRecorder(stream, options);
+
+          mediaRecorder.ondataavailable = e => {
+            if (e.data && e.data.size > 0) audioChunks.push(e.data);
+          };
+
+          mediaRecorder.onstop = () => {
+            const actualType = mediaRecorder.mimeType || recordedMimeType;
+            audioBlob = new Blob(audioChunks, { type: actualType });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const preview = document.getElementById('audio-preview');
+            preview.src = audioUrl;
+            document.getElementById('audio-preview-container').classList.remove('hidden');
+            stream.getTracks().forEach(track => track.stop());
+          };
+
+          mediaRecorder.start();
+          document.getElementById('record-btn').classList.add('pulse-record');
+          document.getElementById('record-status-label').innerText = 'Gravando...';
+          document.getElementById('audio-preview-container').classList.add('hidden');
+          document.getElementById('audio-file-name').classList.add('hidden');
+          
+          secondsElapsed = 0;
+          const timer = document.getElementById('recording-timer');
+          timer.classList.remove('hidden');
+          timer.innerText = '00:00';
+          timerInterval = setInterval(() => {
+            secondsElapsed++;
+            const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+            const secs = String(secondsElapsed % 60).padStart(2, '0');
+            timer.innerText = `${mins}:${secs}`;
+          }, 1000);
+
+        } catch (err) {
+          console.error(err);
+          alert('Permissão de microfone negada ou microfone indisponível.');
+        }
+      }
+    }
+
+    // Upload de arquivo de áudio já gravado (ex: WhatsApp)
+    function handleAudioFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      audioBlob = file;
+      recordedMimeType = file.type || 'audio/ogg';
+
+      const audioUrl = URL.createObjectURL(file);
+      const preview = document.getElementById('audio-preview');
+      preview.src = audioUrl;
+
+      const fileNameLabel = document.getElementById('audio-file-name');
+      fileNameLabel.innerText = `Arquivo: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+      fileNameLabel.classList.remove('hidden');
+
+      document.getElementById('audio-preview-container').classList.remove('hidden');
+      document.getElementById('recording-timer').classList.add('hidden');
+    }
+
+    function stopAudioRecordingIfActive() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+      clearInterval(timerInterval);
+    }
+
+    function resetAudioRecordingState() {
+      audioBlob = null;
+      document.getElementById('audio-preview-container').classList.add('hidden');
+      document.getElementById('recording-timer').classList.add('hidden');
+      document.getElementById('audio-file-name').classList.add('hidden');
+      document.getElementById('audio-file-input').value = '';
+    }
+
+    async function submitAudioRecipe() {
+      if (!audioBlob) {
+        alert('Grave ou selecione um áudio primeiro.');
+        return;
+      }
+
+      setAiProcessing(true);
+      const formData = new FormData();
+      const ext = recordedMimeType.includes('mp4') ? 'm4a' : (recordedMimeType.includes('ogg') ? 'ogg' : 'webm');
+      formData.append('audio', audioBlob, `audio_recipe.${ext}`);
+
+      try {
+        const res = await fetch('/api/recipes/from-audio', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          closeAddModal();
+          fetchRecipes();
+        } else {
+          alert(data.error || 'Erro ao processar áudio.');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Erro ao enviar áudio.');
+      } finally {
+        setAiProcessing(false);
+      }
+    }
+
+    // 6. EDITAR RECEITA
+    function openEditModal(id) {
+      const recipe = allRecipes.find(r => r.id === id);
+      if (!recipe) return;
+
+      document.getElementById('edit-id').value = recipe.id;
+      document.getElementById('edit-title').value = recipe.title || '';
+      document.getElementById('edit-category').value = recipe.category ? recipe.category.toLowerCase() : 'almoço';
+      document.getElementById('edit-prep-time').value = recipe.prepTimeMinutes || '';
+      document.getElementById('edit-portions').value = recipe.portions || '';
+      document.getElementById('ai-edit-prompt').value = '';
+
+      // Formatando ingredientes preservando nome, quantidade, unidade e observação
+      const ingLines = (recipe.ingredients || []).map(i => {
+        let line = i.name;
+        if (i.quantity) line += ` - ${i.quantity}`;
+        if (i.unit) line += ` ${i.unit}`;
+        if (i.notes) line += ` (${i.notes})`;
+        return line;
+      }).join('\n');
+      document.getElementById('edit-ingredients').value = ingLines;
+
+      // Formatando passos em linhas
+      const instLines = (recipe.instructions || []).map(i => i.description).join('\n');
+      document.getElementById('edit-instructions').value = instLines;
+
+      document.getElementById('modal-edit').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeEditModal() {
+      document.getElementById('modal-edit').classList.add('hidden');
+    }
+
+    // Aplicar alteração inteligente via IA
+    async function submitAiEditRecipe() {
+      const id = document.getElementById('edit-id').value;
+      const instructions = document.getElementById('ai-edit-prompt').value.trim();
+      if (!instructions) {
+        alert('Diga o que você deseja alterar na receita.');
+        return;
+      }
+
+      const btn = document.getElementById('btn-apply-ai-edit');
+      btn.disabled = true;
+      btn.innerText = 'Processando...';
+
+      try {
+        const res = await fetch(`/api/recipes/${id}/ai-update`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ instructions })
+        });
+        const updated = await res.json();
+        if (res.ok) {
+          closeEditModal();
+          await fetchRecipes();
+          openDetailsModal(updated);
+        } else {
+          alert(updated.error || 'Não foi possível atualizar a receita com a IA.');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Erro ao se comunicar com o servidor.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="send" class="w-3.5 h-3.5"></i> Aplicar';
+        lucide.createIcons();
+      }
+    }
+
+    async function saveEditedRecipe(e) {
+      e.preventDefault();
+      const id = document.getElementById('edit-id').value;
+      const title = document.getElementById('edit-title').value;
+      const category = document.getElementById('edit-category').value;
+      const prepTimeMinutes = parseInt(document.getElementById('edit-prep-time').value) || null;
+      const portions = parseInt(document.getElementById('edit-portions').value) || null;
+
+      // Parser inteligente que preserva nome, quantidade, unidade e observação
+      const ingText = document.getElementById('edit-ingredients').value;
+      const ingredients = ingText.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(line => {
+          let name = line;
+          let quantity = null;
+          let unit = null;
+          let notes = null;
+
+          // Extrai notas entre parênteses
+          const notesMatch = line.match(/\((.*?)\)/);
+          if (notesMatch) {
+            notes = notesMatch[1].trim();
+            line = line.replace(/\(.*?\)/, '').trim();
+          }
+
+          if (line.includes('|')) {
+            const parts = line.split('|');
+            name = parts[0].trim();
+            quantity = parts[1] ? parts[1].trim() : null;
+            unit = parts[2] ? parts[2].trim() : null;
+            if (parts[3]) notes = parts[3].trim();
+          } else if (line.includes('-')) {
+            const parts = line.split('-');
+            name = parts[0].trim();
+            const rest = parts[1] ? parts[1].trim() : '';
+            if (rest) {
+              const qtyMatch = rest.match(/^(\d+(?:[.,/]\d+)?)\s*(.*)$/);
+              if (qtyMatch) {
+                quantity = qtyMatch[1];
+                unit = qtyMatch[2] ? qtyMatch[2].trim() : null;
+              } else {
+                quantity = rest;
+              }
+            }
+          }
+
+          return { name, quantity, unit, notes };
+        });
+
+      const instText = document.getElementById('edit-instructions').value;
+      const instructions = instText.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map((line, idx) => ({
+          stepNumber: idx + 1,
+          description: line
+        }));
+
+      try {
+        const res = await fetch(`/api/recipes/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            category,
+            prepTimeMinutes,
+            portions,
+            ingredients,
+            instructions
+          })
+        });
+
+        if (res.ok) {
+          closeEditModal();
+          fetchRecipes();
+        } else {
+          alert('Erro ao atualizar a receita.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao salvar alterações.');
+      }
+    }
+
+    function showLoading(show) {
+      document.getElementById('loading').classList.toggle('hidden', !show);
+      document.getElementById('recipe-list').classList.toggle('hidden', show);
+    }
+
+    function setAiProcessing(active) {
+      document.getElementById('ai-processing').classList.toggle('hidden', !active);
+      document.getElementById('btn-send-audio').disabled = active;
+      document.getElementById('btn-send-text').disabled = active;
+    }
+  </script>
+</body>
+</html>

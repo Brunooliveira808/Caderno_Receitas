@@ -42,7 +42,7 @@ public class GeminiService {
     );
 
     private static final String SYSTEM_PROMPT = """
-        Você é um assistente culinário especialista em extrair e estruturar receitas a partir de textos e conversas humanas informais.
+        Você é um assistente culinário especialista em extrair e estruturar receitas a partir de textos e conversas humanas informais faladas ou digitadas em português.
         
         REQUISITOS OBRIGATÓRIOS:
         
@@ -52,26 +52,46 @@ public class GeminiService {
           Retorne "isRecipe": false, "refusalReason": "Mensagem não contém uma receita culinária.", "title": null, "ingredients": [], "instructions": [].
         - Se contiver uma receita (mesmo curta, simples ou falada informalmente), retorne "isRecipe": true.
 
-        2. PRESERVAÇÃO EXATA DO TÍTULO (CRÍTICO):
+        2. TRANSCRIÇÃO DA FALA / TEXTO ORIGINAL ("transcription"):
+        - Se for áudio, registre no campo "transcription" a transcrição fiel e completa do que o usuário disse, corrigindo apenas pontuação básica.
+        - Se for texto, reproduza o texto original do usuário.
+
+        3. CATEGORIZAÇÃO OFICIAL:
+        - O campo "category" DEVE ser obrigatoriamente UMA destas 6 opções em minúsculo:
+          - "café da manhã" (pães, ovos, panquecas, vitaminas matinais, café)
+          - "almoço" (refeições principais, arroz, feijão, carnes, massas salgadas)
+          - "lanche" (salgados, sanduíches, petiscos, tortas salgadas, snacks)
+          - "jantar" (sopas, caldos, refeições leves ou noturnas)
+          - "ceia" (chás, alimentos leves antes de dormir)
+          - "sobremesa" (bolos, doces, tortas doces, pudins, sobremesas geladas)
+        - Se o usuário não explicitar, deduza com base no tipo de comida. Nunca use categorias fora desta lista de 6 opções.
+
+        4. PRESERVAÇÃO EXATA DO TÍTULO (CRÍTICO):
         - Se o usuário forneceu um nome ou título (ex: "Bolo de Cenoura da Mamãe", "Arroz de forno", "Miojo com requeijão"), use EXATAMENTE o nome dito pelo usuário. NÃO altere, não invente subtítulos, não "embeleze" e não troque por nomes genéricos.
         - Somente se o usuário NÃO tiver mencionado nenhum nome ou prato em nenhum momento, deduza um título simples baseado no prato principal.
 
-        3. INGREDIENTES E QUANTIDADES:
+        5. INGREDIENTES E QUANTIDADES INFORMALIDADE BRASILEIRA:
         - Identifique todos os ingredientes mencionados.
-        - Se houver quantidade/unidade, preencha quantity e unit. Se não houver, coloque quantity="a gosto" ou "1" e unit=null.
+        - Lide com autocorreções na fala humana (ex: "coloque 2... quer dizer, 3 xícaras" -> registre quantity="3").
+        - Trate medidas informais típicas brasileiras:
+          - "um fio de azeite" -> quantity="1", unit="fio", name="Azeite"
+          - "uma pitada de sal" -> quantity="1", unit="pitada", name="Sal"
+          - "meio copo americano de leite" -> quantity="1/2", unit="copo americano", name="Leite"
+          - Se não houver quantidade especificada -> quantity="a gosto" ou "1" e unit=null.
         
-        4. PASSOS:
-        - Divida o modo de preparo em passos claros e ordenados em "instructions".
+        6. PASSOS:
+        - Divida o modo de preparo em passos claros e ordenados em "instructions" (stepNumber iniciando em 1).
 
         FORMATO OBRIGATÓRIO DO JSON:
         {
           "isRecipe": true,
           "refusalReason": null,
           "title": "Título Exato Informado pelo Usuário",
-          "category": "Sobremesa / Almoço / Jantar / Bebida / null",
+          "category": "café da manhã / almoço / lanche / jantar / ceia / sobremesa",
           "sourceAuthor": "Quem ensinou ou null",
           "prepTimeMinutes": null,
           "portions": null,
+          "transcription": "Texto ou transcrição do que foi falado",
           "ingredients": [
             {
               "name": "Nome do ingrediente",
@@ -137,46 +157,79 @@ public class GeminiService {
     }
 
     /**
+     * Limpa e normaliza o MIME type de áudio para formatos aceitos pela API do Gemini.
+     */
+    static String sanitizeAudioMimeType(String mimeType) {
+        if (mimeType == null || mimeType.isBlank()) {
+            return "audio/ogg";
+        }
+        String clean = mimeType.split(";")[0].trim().toLowerCase();
+        return switch (clean) {
+            case "audio/mp4", "audio/x-m4a", "audio/m4a", "video/mp4" -> "audio/mp4";
+            case "audio/mpeg", "audio/mp3" -> "audio/mp3";
+            case "audio/wav", "audio/x-wav", "audio/wave" -> "audio/wav";
+            case "audio/aac" -> "audio/aac";
+            case "audio/webm", "video/webm" -> "audio/webm";
+            case "audio/ogg", "application/ogg", "audio/opus" -> "audio/ogg";
+            default -> clean.startsWith("audio/") ? clean : "audio/webm";
+        };
+    }
+
+    Map<String, Object> buildTextPayload(String userText) {
+        return Map.of(
+            "system_instruction", Map.of(
+                "parts", List.of(Map.of("text", SYSTEM_PROMPT))
+            ),
+            "contents", List.of(
+                Map.of("parts", List.of(
+                    Map.of("text", "Entrada do usuário:\n\"" + userText + "\"")
+                ))
+            ),
+            "generationConfig", Map.of(
+                "responseMimeType", "application/json",
+                "temperature", 0.1
+            )
+        );
+    }
+
+    Map<String, Object> buildAudioPayload(byte[] audioBytes, String mimeType) {
+        String base64Audio = Base64.getEncoder().encodeToString(audioBytes);
+        String cleanMime = sanitizeAudioMimeType(mimeType);
+
+        return Map.of(
+            "system_instruction", Map.of(
+                "parts", List.of(Map.of("text", SYSTEM_PROMPT))
+            ),
+            "contents", List.of(
+                Map.of("parts", List.of(
+                    Map.of("inlineData", Map.of(
+                        "mimeType", cleanMime,
+                        "data", base64Audio
+                    )),
+                    Map.of("text", "Ouça o áudio com atenção, preencha o campo 'transcription' com o que foi falado e extraia a receita estruturada no formato JSON especificado.")
+                ))
+            ),
+            "generationConfig", Map.of(
+                "responseMimeType", "application/json",
+                "temperature", 0.1
+            )
+        );
+    }
+
+    /**
      * Extrai os dados da receita a partir de um texto digitado no Telegram.
      */
     public RecipeResponseDTO extractRecipeFromText(String userText) {
         log.info("Processando texto recebido: {}", userText);
-        Map<String, Object> payload = Map.of(
-            "contents", List.of(
-                Map.of("parts", List.of(
-                    Map.of("text", SYSTEM_PROMPT + "\n\nEntrada do usuário:\n\"" + userText + "\"")
-                ))
-            ),
-            "generationConfig", Map.of(
-                "responseMimeType", "application/json"
-            )
-        );
-
-        return callGeminiWithFallback(payload);
+        return callGeminiWithFallback(buildTextPayload(userText));
     }
 
     /**
      * Extrai os dados da receita a partir de um arquivo de áudio recebido pelo Telegram.
      */
     public RecipeResponseDTO extractRecipeFromAudio(byte[] audioBytes, String mimeType) {
-        String base64Audio = Base64.getEncoder().encodeToString(audioBytes);
-
-        Map<String, Object> payload = Map.of(
-            "contents", List.of(
-                Map.of("parts", List.of(
-                    Map.of("inlineData", Map.of(
-                        "mimeType", mimeType != null ? mimeType : "audio/ogg",
-                        "data", base64Audio
-                    )),
-                    Map.of("text", SYSTEM_PROMPT + "\n\nExtraia a receita deste áudio gravado.")
-                ))
-            ),
-            "generationConfig", Map.of(
-                "responseMimeType", "application/json"
-            )
-        );
-
-        return callGeminiWithFallback(payload);
+        log.info("Processando áudio recebido (MIME original: {})", mimeType);
+        return callGeminiWithFallback(buildAudioPayload(audioBytes, mimeType));
     }
 
     /**
@@ -248,6 +301,19 @@ public class GeminiService {
             ));
         }
 
+        // 5. Alterar Categoria
+        java.util.regex.Matcher categoryMatcher = java.util.regex.Pattern
+            .compile("(?i)^(?:mudar?\\s+(?:a\\s+)?)?categoria\\s*(?:para|pra|=|:|[eé])\\s*(.+)$")
+            .matcher(trimmed);
+        if (categoryMatcher.matches()) {
+            String newCategory = categoryMatcher.group(1).trim().toLowerCase();
+            return Optional.of(new RecipeResponseDTO(
+                true, null, existingRecipe.getTitle(), newCategory,
+                existingRecipe.getSourceAuthor(), existingRecipe.getPrepTimeMinutes(), existingRecipe.getPortions(),
+                ingredientsDTO, instructionsDTO
+            ));
+        }
+
         return Optional.empty();
     }
 
@@ -285,17 +351,19 @@ public class GeminiService {
 
             String currentJson = objectMapper.writeValueAsString(currentDto);
 
-            String prompt = UPDATE_SYSTEM_PROMPT + "\n\nRECEITA ATUAL (JSON):\n" + currentJson + 
-                            "\n\nPEDIDO DE ALTERAÇÃO DO USUÁRIO:\n\"" + updateInstructions + "\"";
-
             Map<String, Object> payload = Map.of(
+                "system_instruction", Map.of(
+                    "parts", List.of(Map.of("text", UPDATE_SYSTEM_PROMPT))
+                ),
                 "contents", List.of(
                     Map.of("parts", List.of(
-                        Map.of("text", prompt)
+                        Map.of("text", "RECEITA ATUAL (JSON):\n" + currentJson + 
+                                       "\n\nPEDIDO DE ALTERAÇÃO DO USUÁRIO:\n\"" + updateInstructions + "\"")
                     ))
                 ),
                 "generationConfig", Map.of(
-                    "responseMimeType", "application/json"
+                    "responseMimeType", "application/json",
+                    "temperature", 0.1
                 )
             );
 

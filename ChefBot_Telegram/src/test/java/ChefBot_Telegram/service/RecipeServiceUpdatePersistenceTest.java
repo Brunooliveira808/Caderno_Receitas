@@ -128,6 +128,19 @@ class RecipeServiceUpdatePersistenceTest {
     }
 
     @Test
+    @DisplayName("Deve normalizar categorias culinárias para as 6 oficiais da aplicação")
+    void shouldNormalizeCategoriesToOfficialList() {
+        assertEquals("café da manhã", recipeService.normalizeCategory("Café da Manhã"));
+        assertEquals("café da manhã", recipeService.normalizeCategory("desjejum matinal"));
+        assertEquals("almoço", recipeService.normalizeCategory("Prato Principal / Almoço"));
+        assertEquals("jantar", recipeService.normalizeCategory("janta leve"));
+        assertEquals("ceia", recipeService.normalizeCategory("ceia noturna"));
+        assertEquals("sobremesa", recipeService.normalizeCategory("Doces / Sobremesas"));
+        assertEquals("lanche", recipeService.normalizeCategory("petiscos e salgados"));
+        assertEquals("lanche", recipeService.normalizeCategory(null));
+    }
+
+    @Test
     @DisplayName("Deve permitir limpar categoria enviando string em branco")
     void shouldClearCategoryWhenEmptyStringProvided() {
         Recipe existing = createExistingRecipe();

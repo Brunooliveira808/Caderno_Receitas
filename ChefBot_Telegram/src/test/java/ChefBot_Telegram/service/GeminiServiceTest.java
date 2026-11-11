@@ -97,6 +97,59 @@ class GeminiServiceTest {
     }
 
     @Test
+    @DisplayName("Deve sanitizar formatos de áudio removendo parâmetros de codec e aceitando formatos comuns")
+    void shouldSanitizeAudioMimeTypesCorrectly() {
+        assertEquals("audio/webm", GeminiService.sanitizeAudioMimeType("audio/webm;codecs=opus"));
+        assertEquals("audio/mp4", GeminiService.sanitizeAudioMimeType("audio/mp4; codecs=mp4a.40.2"));
+        assertEquals("audio/mp4", GeminiService.sanitizeAudioMimeType("audio/x-m4a"));
+        assertEquals("audio/mp3", GeminiService.sanitizeAudioMimeType("audio/mpeg"));
+        assertEquals("audio/ogg", GeminiService.sanitizeAudioMimeType("audio/ogg;codecs=opus"));
+        assertEquals("audio/ogg", GeminiService.sanitizeAudioMimeType(null));
+        assertEquals("audio/ogg", GeminiService.sanitizeAudioMimeType(""));
+    }
+
+    @Test
+    @DisplayName("Deve fazer o parse da resposta contendo transcrição de áudio e categoria oficial")
+    void shouldParseTranscriptionAndCategory() throws Exception {
+        String responseWithTranscript = """
+            {
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "{\\"isRecipe\\": true, \\"title\\": \\"Café com Pão de Queijo\\", \\"category\\": \\"café da manhã\\", \\"transcription\\": \\"Bata os ovos com o queijo e asse por 20 minutos\\", \\"ingredients\\":[], \\"instructions\\":[]}"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+            """;
+
+        RecipeResponseDTO dto = geminiService.parseGeminiResponse(responseWithTranscript);
+
+        assertNotNull(dto);
+        assertTrue(dto.isRecipe());
+        assertEquals("Café com Pão de Queijo", dto.title());
+        assertEquals("café da manhã", dto.category());
+        assertEquals("Bata os ovos com o queijo e asse por 20 minutos", dto.transcription());
+    }
+
+    @Test
+    @DisplayName("Deve montar payloads com system_instruction nativo e temperature 0.1")
+    void shouldBuildPayloadsWithSystemInstructionAndLowTemperature() {
+        var textPayload = geminiService.buildTextPayload("Receita de tapioca");
+        assertNotNull(textPayload.get("system_instruction"));
+        var genConfig = (java.util.Map<?, ?>) textPayload.get("generationConfig");
+        assertEquals("application/json", genConfig.get("responseMimeType"));
+        assertEquals(0.1, genConfig.get("temperature"));
+
+        var audioPayload = geminiService.buildAudioPayload(new byte[]{1, 2, 3}, "audio/webm;codecs=opus");
+        assertNotNull(audioPayload.get("system_instruction"));
+    }
+
+    @Test
     @DisplayName("Deve lançar exceção se candidates vier vazio da Gemini API")
     void shouldThrowExceptionWhenCandidatesEmpty() {
         String emptyResponse = "{\"candidates\": []}";

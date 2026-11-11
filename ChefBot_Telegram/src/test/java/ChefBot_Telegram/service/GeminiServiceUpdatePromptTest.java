@@ -105,6 +105,19 @@ class GeminiServiceUpdatePromptTest {
     }
 
     @Test
+    @DisplayName("Deve resolver alteração de categoria via Fast-Path")
+    void shouldUpdateCategoryViaFastPath() {
+        Recipe recipe = createSampleRecipe();
+
+        Optional<RecipeResponseDTO> result = geminiService.tryDirectFieldEdit(recipe, "mudar a categoria para café da manhã");
+
+        assertTrue(result.isPresent());
+        RecipeResponseDTO dto = result.get();
+        assertEquals("café da manhã", dto.category());
+        assertEquals("Bolo Simples", dto.title());
+    }
+
+    @Test
     @DisplayName("Deve delegar para IA quando a instrução for complexa (ex: troca de ingredientes)")
     void shouldDelegateToAiWhenComplexInstruction() {
         Recipe recipe = createSampleRecipe();

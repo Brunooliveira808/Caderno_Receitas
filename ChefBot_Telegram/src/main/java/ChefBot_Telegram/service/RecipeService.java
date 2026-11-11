@@ -26,12 +26,39 @@ public class RecipeService {
 
     private static final Logger log = LoggerFactory.getLogger(RecipeService.class);
 
+    public static final List<String> VALID_CATEGORIES = List.of(
+        "café da manhã", "almoço", "lanche", "jantar", "ceia", "sobremesa"
+    );
+
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
 
     public RecipeService(UserRepository userRepository, RecipeRepository recipeRepository) {
         this.userRepository = userRepository;
         this.recipeRepository = recipeRepository;
+    }
+
+    /**
+     * Normaliza a categoria vinda da IA ou do usuário para uma das 6 categorias oficiais.
+     */
+    public String normalizeCategory(String rawCategory) {
+        if (rawCategory == null || rawCategory.isBlank()) {
+            return "lanche";
+        }
+        String norm = normalizeText(rawCategory);
+        if (norm.contains("cafe") || norm.contains("manha") || norm.contains("desjejum")) return "café da manhã";
+        if (norm.contains("almoco") || norm.contains("prato principal")) return "almoço";
+        if (norm.contains("janta")) return "jantar";
+        if (norm.contains("ceia")) return "ceia";
+        if (norm.contains("sobremesa") || norm.contains("doce") || norm.contains("bolo") || norm.contains("pudim") || norm.contains("torta doce")) return "sobremesa";
+        if (norm.contains("lanche") || norm.contains("salgado") || norm.contains("bebida") || norm.contains("petisco")) return "lanche";
+        
+        for (String valid : VALID_CATEGORIES) {
+            if (normalizeText(valid).equals(norm)) {
+                return valid;
+            }
+        }
+        return rawCategory.trim().toLowerCase();
     }
 
     /**
@@ -50,11 +77,17 @@ public class RecipeService {
         Recipe recipe = new Recipe();
         recipe.setUser(user);
         recipe.setTitle(dto.title() != null ? dto.title() : "Receita sem título");
-        recipe.setCategory(dto.category());
+        recipe.setCategory(normalizeCategory(dto.category()));
         recipe.setSourceAuthor(dto.sourceAuthor());
         recipe.setPrepTimeMinutes(dto.prepTimeMinutes());
         recipe.setPortions(dto.portions());
-        recipe.setRawTranscript(rawTranscript);
+
+        // Prioriza a transcrição real se o rawTranscript fornecido for apenas genérico
+        if (dto.transcription() != null && !dto.transcription().isBlank()) {
+            recipe.setRawTranscript(dto.transcription().trim());
+        } else {
+            recipe.setRawTranscript(rawTranscript);
+        }
 
         // Mapear Ingredientes
         if (dto.ingredients() != null) {
@@ -97,7 +130,7 @@ public class RecipeService {
             recipe.setTitle(dto.title().trim());
         }
         if (dto.category() != null) {
-            recipe.setCategory(dto.category().isBlank() ? null : dto.category().trim());
+            recipe.setCategory(dto.category().isBlank() ? null : normalizeCategory(dto.category()));
         }
         if (dto.sourceAuthor() != null) {
             recipe.setSourceAuthor(dto.sourceAuthor().isBlank() ? null : dto.sourceAuthor().trim());
@@ -381,6 +414,88 @@ public class RecipeService {
         }
         return sb.toString();
     }
+
+    /**
+     * Retorna todas as receitas salvas no sistema.
+     */
+    public List<Recipe> findAllRecipes() {
+        return recipeRepository.findAll();
+    }
+
+    /**
+     * Busca receita por ID independente de usuário (para a Web).
+     */
+    public Optional<Recipe> findRecipeById(Long id) {
+        return recipeRepository.findById(id);
+    }
+
+    /**
+     * Deleta receita por ID diretamente (para a Web).
+     */
+    @Transactional
+    public boolean deleteRecipeById(Long id) {
+        if (recipeRepository.existsById(id)) {
+            recipeRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Atualiza uma receita com dados manuais vindos da Web.
+     */
+    @Transactional
+    public Recipe updateRecipeManual(Long id, ChefBot_Telegram.dto.RecipeUpdateRequestDTO dto) {
+        Recipe recipe = recipeRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Receita não encontrada com ID: " + id));
+
+        if (dto.title() != null && !dto.title().isBlank()) {
+            recipe.setTitle(dto.title().trim());
+        }
+        if (dto.category() != null) {
+            recipe.setCategory(dto.category().isBlank() ? null : normalizeCategory(dto.category()));
+        }
+        if (dto.sourceAuthor() != null) {
+            recipe.setSourceAuthor(dto.sourceAuthor().isBlank() ? null : dto.sourceAuthor().trim());
+        }
+        if (dto.prepTimeMinutes() != null) {
+            recipe.setPrepTimeMinutes(dto.prepTimeMinutes() > 0 ? dto.prepTimeMinutes() : null);
+        }
+        if (dto.portions() != null) {
+            recipe.setPortions(dto.portions() > 0 ? dto.portions() : null);
+        }
+
+        if (dto.ingredients() != null) {
+            recipe.getIngredients().clear();
+            for (ChefBot_Telegram.dto.IngredientDTO ingDTO : dto.ingredients()) {
+                if (ingDTO.name() != null && !ingDTO.name().isBlank()) {
+                    Ingredient ingredient = new Ingredient();
+                    ingredient.setName(ingDTO.name().trim());
+                    ingredient.setQuantity(ingDTO.quantity());
+                    ingredient.setUnit(ingDTO.unit());
+                    ingredient.setNotes(ingDTO.notes());
+                    recipe.addIngredient(ingredient);
+                }
+            }
+        }
+
+        if (dto.instructions() != null) {
+            recipe.getInstructions().clear();
+            int step = 1;
+            for (ChefBot_Telegram.dto.InstructionDTO instDTO : dto.instructions()) {
+                if (instDTO.description() != null && !instDTO.description().isBlank()) {
+                    Instruction instruction = new Instruction();
+                    instruction.setStepNumber(instDTO.stepNumber() != null ? instDTO.stepNumber() : step);
+                    instruction.setInstructionText(instDTO.description().trim());
+                    recipe.addInstruction(instruction);
+                    step++;
+                }
+            }
+        }
+
+        return recipeRepository.saveAndFlush(recipe);
+    }
 }
+
 
 

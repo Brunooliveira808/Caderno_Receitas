@@ -16,7 +16,7 @@ flowchart LR
 ## Task 1: Evolução do `RecipeResponseDTO` e Normalização das Categorias Oficiais
 
 ### Objetivo
-Adicionar o campo `transcription` (transcrição literal do áudio/texto) ao [`RecipeResponseDTO.java`](file:///home/bruno/meusProjetos/ChefBot_Telegram/ChefBot_Telegram/src/main/java/ChefBot_Telegram/dto/RecipeResponseDTO.java) mantendo um construtor de compatibilidade para não quebrar chamadas existentes, e garantir que [`RecipeService.java`](file:///home/bruno/meusProjetos/ChefBot_Telegram/ChefBot_Telegram/src/main/java/ChefBot_Telegram/service/RecipeService.java) normalize categorias para as 6 opções oficiais da interface: `café da manhã`, `almoço`, `lanche`, `jantar`, `ceia`, `sobremesa`.
+Adicionar o campo `transcription` (transcrição literal do áudio/texto) ao [`RecipeResponseDTO.java`](file:///home/bruno/meusProjetos/ChefBot_Telegram/ChefBot_Telegram/src/main/java/ChefBot_Telegram/dto/RecipeResponseDTO.java) mantendo um construtor de compatibilidade para não quebrar chamadas existentes, e garantir que [`RecipeService.java`](file:///home/bruno/meusProjetos/ChefBot_Telegram/ChefBot_Telegram/src/main/java/ChefBot_Telegram/service/RecipeService.java) normalize categorias para as 6 opções oficiais da interface: `café da manhã`, `almoço`, `lanche`, `jantar`, `ceia`, `sobremesa`, `bebida`.
 
 ### Arquivos a Modificar
 1. [`src/main/java/ChefBot_Telegram/dto/RecipeResponseDTO.java`](file:///home/bruno/meusProjetos/ChefBot_Telegram/ChefBot_Telegram/src/main/java/ChefBot_Telegram/dto/RecipeResponseDTO.java)
@@ -110,7 +110,7 @@ Execute:
 Melhorar drasticamente o entendimento de áudio e texto no [`GeminiService.java`](file:///home/bruno/meusProjetos/ChefBot_Telegram/ChefBot_Telegram/src/main/java/ChefBot_Telegram/service/GeminiService.java):
 1. Criar o método `sanitizeAudioMimeType(String mimeType)` para limpar sufixos como `audio/webm;codecs=opus` -> `audio/webm` (evitando erro 400 na API do Gemini em celulares Android/iOS).
 2. Atualizar o `SYSTEM_PROMPT` para:
-   - Exigir que `category` seja **exatamente** uma das 6 opções: `"café da manhã"`, `"almoço"`, `"lanche"`, `"jantar"`, `"ceia"` ou `"sobremesa"`.
+   - Exigir que `category` seja **exatamente** uma das 6 opções: `"café da manhã"`, `"almoço"`, `"lanche"`, `"jantar"`, `"ceia"`, `"bebida"` ou `"sobremesa"`.
    - Preencher `"transcription"` com a transcrição fiel do áudio (ou cópia limpa do texto).
    - Tratar **autocorreções de fala** (ex: *"coloca 2... quer dizer, 3 xícaras de trigo"* -> registrar `3`).
    - Tratar **medidas informais brasileiras** (ex: *"um fio de azeite"*, *"uma pitada"*, *"meio copo americano"*, *"a gosto"*).

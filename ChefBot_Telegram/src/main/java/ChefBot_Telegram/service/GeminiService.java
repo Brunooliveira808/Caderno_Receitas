@@ -31,14 +31,14 @@ public class GeminiService {
     @Value("${gemini.api.key}")
     private String apiKey;
 
-    @Value("${gemini.model.primary:gemini-3.1-flash-lite}")
+    @Value("${gemini.model.primary:gemini-2.5-flash}")
     private String primaryModel;
 
-    // Modelos ativos suportados pela API Generative Language do Google
+    // Modelos oficiais do Google AI Studio com fallback de alta disponibilidade
     private static final List<String> FALLBACK_MODELS = List.of(
-        "gemini-3.1-flash-lite",
-        "gemini-flash-lite-latest",
-        "gemini-3.5-flash"
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash"
     );
 
     private static final String SYSTEM_PROMPT = """

@@ -51,4 +51,12 @@ class TelegramHtmlUtilTest {
     void shouldStripHtmlNullSafe() {
         assertEquals("", TelegramHtmlUtil.stripHtml(null));
     }
+
+    @Test
+    @DisplayName("Deve manter caracteres reservados comuns de pontuação sem quebrar HTML")
+    void shouldHandleReservedPunctuationCharacters() {
+        String input = "Bolo de Cenoura [Especial] - com cobertura (chocolate) *5 estrelas*!";
+        String escaped = TelegramHtmlUtil.escapeHtml(input);
+        assertEquals("Bolo de Cenoura [Especial] - com cobertura (chocolate) *5 estrelas*!", escaped);
+    }
 }

@@ -81,18 +81,19 @@
         </div>
 
         <div class="flex items-center gap-1">
-          <!-- Botão de Usuário / Login -->
-          <button id="btn-user-profile" onclick="openAuthModal()" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600 transition relative" title="Perfil / Entrar">
-            <i data-lucide="user" class="w-5 h-5"></i>
-            <span id="auth-status-dot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white"></span>
+          <!-- Botão de Atualizar -->
+          <button onclick="fetchRecipes()" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600 transition" title="Atualizar">
+            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
           </button>
           <!-- Botão de Instalar App PWA -->
           <button id="btn-install-pwa" onclick="installPWA()" class="hidden px-2.5 py-1.5 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="Instalar aplicativo">
             <i data-lucide="download" class="w-3.5 h-3.5"></i>
             <span>Instalar</span>
           </button>
-          <button onclick="fetchRecipes()" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600 transition" title="Atualizar">
-            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+          <!-- Botão de Usuário / Login (extrema direita) -->
+          <button id="btn-user-profile" onclick="openAuthModal()" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600 transition relative" title="Perfil / Entrar">
+            <i data-lucide="user" class="w-5 h-5"></i>
+            <span id="auth-status-dot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white"></span>
           </button>
         </div>
       </div>

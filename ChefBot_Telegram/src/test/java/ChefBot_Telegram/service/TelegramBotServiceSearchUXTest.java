@@ -114,4 +114,17 @@ class TelegramBotServiceSearchUXTest {
         assertTrue(sent.getText().contains("Suas receitas recentes:"));
         assertTrue(sent.getText().contains("[#5]"));
     }
+
+    @Test
+    @DisplayName("Deve interceptar perguntas em linguagem natural e delegar para a busca")
+    void shouldInterceptNaturalLanguageQuestions() {
+        Recipe bolo = createRecipe(1L, "Bolo de Cenoura");
+        when(recipeService.searchRecipes(CHAT_ID, "bolo de cenoura")).thenReturn(List.of(bolo));
+        when(recipeService.formatRecipeForTelegram(bolo)).thenReturn("🍽️ *Bolo de Cenoura* (Ficha Completa)");
+
+        botService.handleTextMessage(CHAT_ID, "Bruno", "como faz bolo de cenoura");
+
+        verify(recipeService, times(1)).searchRecipes(CHAT_ID, "bolo de cenoura");
+        verifyNoInteractions(geminiService);
+    }
 }

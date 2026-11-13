@@ -98,7 +98,7 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
         }
     }
 
-    private void handleTextMessage(Long chatId, String userName, String text) {
+    void handleTextMessage(Long chatId, String userName, String text) {
         if (text.startsWith("/")) {
             String[] parts = text.split("\\s+", 2);
             String rawCmd = parts[0].toLowerCase();

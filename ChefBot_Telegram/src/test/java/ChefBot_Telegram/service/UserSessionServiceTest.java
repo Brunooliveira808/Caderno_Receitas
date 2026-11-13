@@ -89,4 +89,18 @@ class UserSessionServiceTest {
         SendMessage lastMessage = captor2.getAllValues().get(captor2.getAllValues().size() - 1);
         assertTrue(lastMessage.getText().contains("Receita atualizada com sucesso!"));
     }
+
+    @Test
+    @DisplayName("Deve cancelar a sessão ativa quando solicitado pelo comando /cancelar")
+    void shouldCancelActiveSession() throws Exception {
+        userSessionService.startUpdateSession(CHAT_ID, 1L);
+        assertTrue(userSessionService.getSession(CHAT_ID).isPresent());
+
+        botService.handleTextMessage(CHAT_ID, "Bruno", "/cancelar");
+
+        assertTrue(userSessionService.getSession(CHAT_ID).isEmpty());
+        ArgumentCaptor<SendMessage> captor = ArgumentCaptor.forClass(SendMessage.class);
+        verify(telegramClient, times(1)).execute(captor.capture());
+        assertTrue(captor.getValue().getText().contains("Edição cancelada"));
+    }
 }

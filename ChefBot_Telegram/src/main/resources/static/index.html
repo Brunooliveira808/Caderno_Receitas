@@ -75,8 +75,29 @@
         </button>
       </div>
 
+      <!-- BARRA DE PESQUISA -->
+      <div class="mt-3 relative">
+        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
+          <i data-lucide="search" class="w-4 h-4"></i>
+        </div>
+        <input 
+          id="search-input" 
+          type="text" 
+          placeholder="Buscar prato, ingrediente..." 
+          oninput="handleSearchInput(this.value)"
+          class="w-full pl-10 pr-9 py-2 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white rounded-2xl text-sm text-neutral-800 placeholder-neutral-400 border border-transparent focus:border-amber-400 focus:outline-none transition shadow-inner"
+        />
+        <button 
+          id="btn-clear-search" 
+          onclick="clearSearch()" 
+          class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-400 hover:text-neutral-600 transition"
+          title="Limpar busca">
+          <i data-lucide="x-circle" class="w-4 h-4"></i>
+        </button>
+      </div>
+
       <!-- FILTROS POR CATEGORIA -->
-      <div class="mt-4 flex gap-2 overflow-x-auto hide-scrollbar py-1 text-sm font-medium">
+      <div id="category-container" class="mt-4 flex gap-2 overflow-x-auto hide-scrollbar py-1 text-sm font-medium">
         <button onclick="setFilter('Todos')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-amber-400 text-amber-950 shadow-sm font-semibold" data-category="Todos">
           Todos
         </button>
@@ -376,6 +397,8 @@
   <!-- SCRIPT DA APLICAÇÃO -->
   <script>
     let currentFilter = 'Todos';
+    let searchQuery = '';
+    let searchDebounceTimeout = null;
     let allRecipes = [];
     let selectedRecipe = null;
 
@@ -385,14 +408,45 @@
       fetchRecipes();
     });
 
+    // Manipulação da busca com debounce suave
+    function handleSearchInput(val) {
+      searchQuery = val.trim();
+      const clearBtn = document.getElementById('btn-clear-search');
+      if (searchQuery.length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+      lucide.createIcons();
+
+      if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
+      searchDebounceTimeout = setTimeout(() => {
+        fetchRecipes();
+      }, 250);
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      searchQuery = '';
+      document.getElementById('btn-clear-search').classList.add('hidden');
+      lucide.createIcons();
+      fetchRecipes();
+    }
+
     // 1. CARREGAR RECEITAS
     async function fetchRecipes() {
       showLoading(true);
       try {
-        let url = '/api/recipes';
+        const params = new URLSearchParams();
         if (currentFilter !== 'Todos') {
-          url += `?category=${encodeURIComponent(currentFilter)}`;
+          params.append('category', currentFilter);
         }
+        if (searchQuery) {
+          params.append('q', searchQuery);
+        }
+
+        const url = '/api/recipes' + (params.toString() ? '?' + params.toString() : '');
         const res = await fetch(url);
         if (!res.ok) throw new Error('Falha ao buscar receitas');
         allRecipes = await res.json();
@@ -421,9 +475,22 @@
     function renderRecipes(recipes) {
       const container = document.getElementById('recipe-list');
       const emptyState = document.getElementById('empty-state');
+      const emptyTitle = emptyState.querySelector('h3');
+      const emptyDesc = emptyState.querySelector('p');
       container.innerHTML = '';
 
       if (!recipes || recipes.length === 0) {
+        if (searchQuery) {
+          emptyTitle.innerText = 'Nenhuma receita encontrada';
+          emptyDesc.innerText = currentFilter !== 'Todos' 
+            ? `Não encontramos resultados para "${searchQuery}" na categoria ${currentFilter}.`
+            : `Não encontramos resultados para "${searchQuery}". Tente outros termos!`;
+        } else {
+          emptyTitle.innerText = currentFilter !== 'Todos' 
+            ? `Nenhuma receita em ${currentFilter}`
+            : 'Nenhuma receita cadastrada';
+          emptyDesc.innerText = 'Adicione uma receita falando no microfone ou escrevendo no botão abaixo!';
+        }
         emptyState.classList.remove('hidden');
         return;
       }

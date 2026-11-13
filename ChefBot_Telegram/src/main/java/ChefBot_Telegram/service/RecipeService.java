@@ -240,12 +240,37 @@ public class RecipeService {
             return List.of();
         }
 
-        String cleanQuery = query.trim();
         List<Recipe> allUserRecipes = recipeRepository.findByUserTelegramChatId(telegramChatId);
-        if (allUserRecipes.isEmpty()) {
+        return filterAndScoreRecipes(allUserRecipes, query);
+    }
+
+    /**
+     * Busca todas as receitas do sistema (ou filtradas por categoria) aplicando o motor de relevância por texto.
+     */
+    @Transactional(readOnly = true)
+    public List<Recipe> searchAllRecipes(String query, String category) {
+        List<Recipe> recipes = recipeRepository.findAll();
+
+        if (category != null && !category.isBlank() && !category.equalsIgnoreCase("todos")) {
+            String normCategory = normalizeText(category);
+            recipes = recipes.stream()
+                .filter(r -> r.getCategory() != null && normalizeText(r.getCategory()).contains(normCategory))
+                .toList();
+        }
+
+        if (query == null || query.isBlank()) {
+            return recipes;
+        }
+
+        return filterAndScoreRecipes(recipes, query);
+    }
+
+    private List<Recipe> filterAndScoreRecipes(List<Recipe> sourceRecipes, String query) {
+        if (sourceRecipes == null || sourceRecipes.isEmpty()) {
             return List.of();
         }
 
+        String cleanQuery = query.trim();
         List<String> tokens = extractSearchTokens(cleanQuery);
         String normalizedFullQuery = normalizeText(cleanQuery);
 
@@ -261,7 +286,7 @@ public class RecipeService {
         record ScoredRecipe(Recipe recipe, int score) {}
         List<ScoredRecipe> scored = new ArrayList<>();
 
-        for (Recipe r : allUserRecipes) {
+        for (Recipe r : sourceRecipes) {
             int score = 0;
 
             // 1. Prioridade máxima se o ID for idêntico ao buscado

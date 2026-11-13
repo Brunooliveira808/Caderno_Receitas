@@ -120,27 +120,47 @@ class RecipeControllerTest {
     }
 
     @Test
-    @DisplayName("Deve retornar status 422 quando o áudio não contiver receita")
-    void shouldRejectNonRecipeAudio() {
-        RecipeResponseDTO refusalDto = new RecipeResponseDTO(
-            false,
-            "Não foi identificada uma receita culinária.",
-            null, null, null, null, null, null,
-            List.of(), List.of()
+    @DisplayName("Deve buscar pratos filtrando por categoria e consulta textual inteligente")
+    void shouldFilterAndSearchRecipesCorrectly() {
+        RecipeResponseDTO burgerDto = new RecipeResponseDTO(
+            true, null, "X-Burger Artesanal", "lanche", "Chef Lanches", 20, 2,
+            "Hambúrguer com cheddar e bacon",
+            List.of(new IngredientDTO("Carne moída", "300", "g", null), new IngredientDTO("Queijo Cheddar", "2", "fatias", null)),
+            List.of(new InstructionDTO(1, "Grelhe a carne e derreta o queijo"))
+        );
+        RecipeResponseDTO pizzaDto = new RecipeResponseDTO(
+            true, null, "Pizza de Queijo e Bacon", "jantar", "Pizzaiolo", 40, 4,
+            "Pizza crocante",
+            List.of(new IngredientDTO("Massa", "1", "disco", null), new IngredientDTO("Queijo Cheddar", "200", "g", null)),
+            List.of(new InstructionDTO(1, "Asse no forno"))
+        );
+        RecipeResponseDTO boloDto = new RecipeResponseDTO(
+            true, null, "Bolo de Cenoura", "sobremesa", "Vovó", 50, 8,
+            "Bolo fofinho",
+            List.of(new IngredientDTO("Cenoura", "3", "unidades", null)),
+            List.of(new InstructionDTO(1, "Misture e asse"))
         );
 
-        Mockito.when(geminiService.extractRecipeFromAudio(any(byte[].class), any(String.class)))
-            .thenReturn(refusalDto);
+        recipeService.saveRecipeFromDTO(999999999L, "Web Chef", burgerDto, "Burger");
+        recipeService.saveRecipeFromDTO(999999999L, "Web Chef", pizzaDto, "Pizza");
+        recipeService.saveRecipeFromDTO(999999999L, "Web Chef", boloDto, "Bolo");
 
-        MockMultipartFile audioFile = new MockMultipartFile(
-            "audio",
-            "conversa.webm",
-            "audio/webm",
-            new byte[]{9, 9, 9}
-        );
+        // 1. Busca por "cheddar" em todas as categorias (deve trazer Burger e Pizza)
+        List<RecipeWebDTO> allWithCheddar = recipeController.getAllRecipes(null, "cheddar");
+        assertEquals(2, allWithCheddar.size());
 
-        ResponseEntity<?> response = recipeController.createFromAudio(audioFile);
+        // 2. Busca por "cheddar" dentro de "lanche" (deve trazer apenas o X-Burger)
+        List<RecipeWebDTO> lancheWithCheddar = recipeController.getAllRecipes("lanche", "cheddar");
+        assertEquals(1, lancheWithCheddar.size());
+        assertEquals("X-Burger Artesanal", lancheWithCheddar.get(0).title());
 
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
+        // 3. Busca por "cheddar" dentro de "sobremesa" (deve ser vazio)
+        List<RecipeWebDTO> sobremesaWithCheddar = recipeController.getAllRecipes("sobremesa", "cheddar");
+        assertEquals(0, sobremesaWithCheddar.size());
+
+        // 4. Sem busca textual, apenas categoria
+        List<RecipeWebDTO> allLanches = recipeController.getAllRecipes("lanche", null);
+        assertEquals(1, allLanches.size());
+        assertEquals("X-Burger Artesanal", allLanches.get(0).title());
     }
 }

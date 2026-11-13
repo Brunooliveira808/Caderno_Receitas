@@ -40,17 +40,24 @@ public class RecipeController {
     }
 
     /**
-     * Lista todas as receitas ou filtra por categoria.
+     * Lista todas as receitas ou filtra por categoria e/ou busca textual inteligente.
      */
     @GetMapping
-    public List<RecipeWebDTO> getAllRecipes(@RequestParam(required = false) String category) {
-        List<Recipe> recipes = recipeService.findAllRecipes();
+    public List<RecipeWebDTO> getAllRecipes(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String q) {
+        List<Recipe> recipes;
 
-        if (category != null && !category.isBlank() && !category.equalsIgnoreCase("todos")) {
-            String normCategory = recipeService.normalizeText(category);
-            recipes = recipes.stream()
-                .filter(r -> r.getCategory() != null && recipeService.normalizeText(r.getCategory()).contains(normCategory))
-                .collect(Collectors.toList());
+        if (q != null && !q.isBlank()) {
+            recipes = recipeService.searchAllRecipes(q, category);
+        } else {
+            recipes = recipeService.findAllRecipes();
+            if (category != null && !category.isBlank() && !category.equalsIgnoreCase("todos")) {
+                String normCategory = recipeService.normalizeText(category);
+                recipes = recipes.stream()
+                    .filter(r -> r.getCategory() != null && recipeService.normalizeText(r.getCategory()).contains(normCategory))
+                    .collect(Collectors.toList());
+            }
         }
 
         return recipes.stream()

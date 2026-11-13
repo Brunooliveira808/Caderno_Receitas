@@ -35,14 +35,16 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
     private final GeminiService geminiService;
     private final RecipeService recipeService;
     private final UserSessionService userSessionService;
+    private final UserService userService;
 
     @Autowired
     public TelegramBotService(
             @Value("${telegram.bot.token}") String botToken,
             GeminiService geminiService,
             RecipeService recipeService,
-            UserSessionService userSessionService) {
-        this(botToken, new OkHttpTelegramClient(botToken), geminiService, recipeService, userSessionService);
+            UserSessionService userSessionService,
+            UserService userService) {
+        this(botToken, new OkHttpTelegramClient(botToken), geminiService, recipeService, userSessionService, userService);
     }
 
     TelegramBotService(
@@ -51,11 +53,22 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
             GeminiService geminiService,
             RecipeService recipeService,
             UserSessionService userSessionService) {
+        this(botToken, telegramClient, geminiService, recipeService, userSessionService, null);
+    }
+
+    TelegramBotService(
+            String botToken,
+            TelegramClient telegramClient,
+            GeminiService geminiService,
+            RecipeService recipeService,
+            UserSessionService userSessionService,
+            UserService userService) {
         this.botToken = botToken;
         this.telegramClient = telegramClient;
         this.geminiService = geminiService;
         this.recipeService = recipeService;
         this.userSessionService = userSessionService;
+        this.userService = userService;
     }
 
     @Override
@@ -112,6 +125,7 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
                 case "/atualizar", "/editar" -> handleUpdateCommand(chatId, args);
                 case "/deletar", "/apagar", "/excluir", "/remover" -> handleDeleteCommand(chatId, args);
                 case "/cancelar", "/cancel" -> handleCancelCommand(chatId);
+                case "/vincular", "/conectar" -> handleLinkCommand(chatId, userName, args);
                 default -> sendTextMessage(chatId, "❓ Comando não reconhecido. Digite <code>/ajuda</code> para ver os comandos disponíveis.");
             }
             return;
@@ -250,6 +264,24 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
 
         sb.append("\n👉 <b>Para abrir a receita completa, digite:</b> <code>/buscar &lt;ID&gt;</code> (ex: <code>/buscar ").append(recipes.get(0).getId()).append("</code>)");
         sendTextMessage(chatId, sb.toString());
+    }
+
+    private void handleLinkCommand(Long chatId, String userName, String args) {
+        if (args.isBlank()) {
+            sendTextMessage(chatId, """
+                🔗 <b>Como vincular ao aplicativo do celular:</b>
+
+                1. Abra o ChefBot no navegador ou app instalado.
+                2. Vá em <b>Minha Conta</b> e clique em <b>"Gerar Código de Vinculação"</b>.
+                3. Digite aqui: <code>/vincular CHEF-XXXX</code>
+
+                Com isso, todas as suas receitas salvas aqui e no app ficarão 100% sincronizadas!
+                """);
+            return;
+        }
+
+        String resultMsg = userService.linkTelegramAccount(chatId, userName, args);
+        sendTextMessage(chatId, resultMsg);
     }
 
     private void handleCancelCommand(Long chatId) {
@@ -423,6 +455,7 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
             • <code>/buscar &lt;termo&gt;</code> - Busca receitas por nome, ingrediente, categoria ou ID.
             • <code>/atualizar &lt;ID&gt; &lt;alteração&gt;</code> - Atualiza título, autor, ingredientes ou preparo de uma receita existente.
             • <code>/deletar &lt;ID&gt;</code> - Exclui uma receita do seu caderno.
+            • <code>/vincular &lt;CHEF-XXXX&gt;</code> - Conecta este chat ao app móvel do celular.
             • <code>/ajuda</code> - Mostra esta mensagem de ajuda.
             """, TelegramHtmlUtil.escapeHtml(userName));
         sendTextMessage(chatId, msg);

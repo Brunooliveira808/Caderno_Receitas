@@ -245,11 +245,11 @@ public class RecipeService {
     }
 
     /**
-     * Busca todas as receitas do sistema (ou filtradas por categoria) aplicando o motor de relevância por texto.
+     * Busca receitas de um usuário específico (ou filtradas por categoria) aplicando o motor de relevância por texto.
      */
     @Transactional(readOnly = true)
-    public List<Recipe> searchAllRecipes(String query, String category) {
-        List<Recipe> recipes = recipeRepository.findAll();
+    public List<Recipe> searchUserRecipes(Long telegramChatId, String query, String category) {
+        List<Recipe> recipes = recipeRepository.findByUserTelegramChatId(telegramChatId);
 
         if (category != null && !category.isBlank() && !category.equalsIgnoreCase("todos")) {
             String normCategory = normalizeText(category);

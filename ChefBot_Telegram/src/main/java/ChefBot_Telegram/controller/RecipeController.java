@@ -5,13 +5,17 @@ import ChefBot_Telegram.dto.InstructionDTO;
 import ChefBot_Telegram.dto.RecipeResponseDTO;
 import ChefBot_Telegram.dto.RecipeUpdateRequestDTO;
 import ChefBot_Telegram.dto.RecipeWebDTO;
+import ChefBot_Telegram.model.AppUser;
 import ChefBot_Telegram.model.Recipe;
+import ChefBot_Telegram.model.User;
 import ChefBot_Telegram.service.GeminiService;
 import ChefBot_Telegram.service.RecipeService;
+import ChefBot_Telegram.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,36 +33,31 @@ public class RecipeController {
 
     private final RecipeService recipeService;
     private final GeminiService geminiService;
+    private final UserService userService;
 
-    // ChatId padrão para operações originadas na Web
-    private static final Long WEB_DEFAULT_CHAT_ID = 999999999L;
-    private static final String WEB_DEFAULT_USER_NAME = "Web Chef";
-
-    public RecipeController(RecipeService recipeService, GeminiService geminiService) {
+    public RecipeController(
+            RecipeService recipeService,
+            GeminiService geminiService,
+            UserService userService) {
         this.recipeService = recipeService;
         this.geminiService = geminiService;
+        this.userService = userService;
     }
 
     /**
-     * Lista todas as receitas ou filtra por categoria e/ou busca textual inteligente.
+     * Lista as receitas pertencentes ao usuário autenticado, com filtro por categoria e busca textual inteligente.
      */
     @GetMapping
     public List<RecipeWebDTO> getAllRecipes(
+            @AuthenticationPrincipal AppUser user,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String q) {
-        List<Recipe> recipes;
-
-        if (q != null && !q.isBlank()) {
-            recipes = recipeService.searchAllRecipes(q, category);
-        } else {
-            recipes = recipeService.findAllRecipes();
-            if (category != null && !category.isBlank() && !category.equalsIgnoreCase("todos")) {
-                String normCategory = recipeService.normalizeText(category);
-                recipes = recipes.stream()
-                    .filter(r -> r.getCategory() != null && recipeService.normalizeText(r.getCategory()).contains(normCategory))
-                    .collect(Collectors.toList());
-            }
+        if (user == null) {
+            return List.of();
         }
+
+        User recipeUser = userService.getOrCreateRecipeUser(user);
+        List<Recipe> recipes = recipeService.searchUserRecipes(recipeUser.getTelegramChatId(), q, category);
 
         return recipes.stream()
             .map(this::toDTO)
@@ -66,20 +65,29 @@ public class RecipeController {
     }
 
     /**
-     * Detalha uma receita por ID.
+     * Detalha uma receita pertencente ao usuário autenticado por ID.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<RecipeWebDTO> getRecipeById(@PathVariable Long id) {
-        return recipeService.findRecipeById(id)
+    public ResponseEntity<RecipeWebDTO> getRecipeById(
+            @AuthenticationPrincipal AppUser user,
+            @PathVariable Long id) {
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        User recipeUser = userService.getOrCreateRecipeUser(user);
+        return recipeService.findRecipeByUserAndId(recipeUser.getTelegramChatId(), id)
             .map(recipe -> ResponseEntity.ok(toDTO(recipe)))
             .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     /**
-     * Cria receita a partir de texto (usando a IA Gemini para estruturar).
+     * Cria receita a partir de texto vinculada ao usuário autenticado.
      */
     @PostMapping("/from-text")
-    public ResponseEntity<?> createFromText(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<?> createFromText(
+            @AuthenticationPrincipal AppUser user,
+            @RequestBody Map<String, String> payload) {
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
         String text = payload.get("text");
         if (text == null || text.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Texto não informado."));
@@ -92,7 +100,8 @@ public class RecipeController {
                     .body(Map.of("error", dto.refusalReason() != null ? dto.refusalReason() : "Não foi detectada uma receita culinária válida."));
             }
 
-            Recipe saved = recipeService.saveRecipeFromDTO(WEB_DEFAULT_CHAT_ID, WEB_DEFAULT_USER_NAME, dto, text);
+            User recipeUser = userService.getOrCreateRecipeUser(user);
+            Recipe saved = recipeService.saveRecipeFromDTO(recipeUser.getTelegramChatId(), user.getName(), dto, text);
             return ResponseEntity.status(HttpStatus.CREATED).body(toDTO(saved));
         } catch (Exception e) {
             log.error("Erro ao processar receita por texto: ", e);
@@ -102,10 +111,14 @@ public class RecipeController {
     }
 
     /**
-     * Cria receita a partir de gravação de áudio do microfone.
+     * Cria receita a partir de áudio vinculada ao usuário autenticado.
      */
     @PostMapping(value = "/from-audio", consumes = "multipart/form-data")
-    public ResponseEntity<?> createFromAudio(@RequestParam("audio") MultipartFile audioFile) {
+    public ResponseEntity<?> createFromAudio(
+            @AuthenticationPrincipal AppUser user,
+            @RequestParam("audio") MultipartFile audioFile) {
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
         if (audioFile.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Arquivo de áudio vazio."));
         }
@@ -124,7 +137,8 @@ public class RecipeController {
                 ? dto.transcription()
                 : "Gravação de áudio Web";
 
-            Recipe saved = recipeService.saveRecipeFromDTO(WEB_DEFAULT_CHAT_ID, WEB_DEFAULT_USER_NAME, dto, transcriptToSave);
+            User recipeUser = userService.getOrCreateRecipeUser(user);
+            Recipe saved = recipeService.saveRecipeFromDTO(recipeUser.getTelegramChatId(), user.getName(), dto, transcriptToSave);
             return ResponseEntity.status(HttpStatus.CREATED).body(toDTO(saved));
         } catch (Exception e) {
             log.error("Erro ao processar receita por áudio: ", e);
@@ -134,16 +148,22 @@ public class RecipeController {
     }
 
     /**
-     * Atualiza uma receita existente usando instruções em linguagem natural via IA.
+     * Atualiza uma receita do usuário usando IA.
      */
     @PostMapping("/{id}/ai-update")
-    public ResponseEntity<?> updateRecipeWithAi(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+    public ResponseEntity<?> updateRecipeWithAi(
+            @AuthenticationPrincipal AppUser user,
+            @PathVariable Long id,
+            @RequestBody Map<String, String> payload) {
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
         String instructions = payload.get("instructions");
         if (instructions == null || instructions.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Instruções de alteração não informadas."));
         }
 
-        Optional<Recipe> existingOpt = recipeService.findRecipeById(id);
+        User recipeUser = userService.getOrCreateRecipeUser(user);
+        Optional<Recipe> existingOpt = recipeService.findRecipeByUserAndId(recipeUser.getTelegramChatId(), id);
         if (existingOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -151,8 +171,7 @@ public class RecipeController {
         try {
             Recipe existing = existingOpt.get();
             RecipeResponseDTO updatedDto = geminiService.updateRecipe(existing, instructions);
-            Long ownerChatId = existing.getUser() != null ? existing.getUser().getTelegramChatId() : WEB_DEFAULT_CHAT_ID;
-            Recipe updated = recipeService.updateRecipeFromDTO(ownerChatId, id, updatedDto);
+            Recipe updated = recipeService.updateRecipeFromDTO(recipeUser.getTelegramChatId(), id, updatedDto);
             return ResponseEntity.ok(toDTO(updated));
         } catch (Exception e) {
             log.error("Erro ao atualizar receita com IA: ", e);
@@ -162,15 +181,24 @@ public class RecipeController {
     }
 
     /**
-     * Atualiza uma receita manualmente.
+     * Atualiza uma receita manualmente verificando a posse do usuário.
      */
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateRecipe(@PathVariable Long id, @RequestBody RecipeUpdateRequestDTO dto) {
+    public ResponseEntity<?> updateRecipe(
+            @AuthenticationPrincipal AppUser user,
+            @PathVariable Long id,
+            @RequestBody RecipeUpdateRequestDTO dto) {
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        User recipeUser = userService.getOrCreateRecipeUser(user);
+        Optional<Recipe> existingOpt = recipeService.findRecipeByUserAndId(recipeUser.getTelegramChatId(), id);
+        if (existingOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
         try {
             Recipe updated = recipeService.updateRecipeManual(id, dto);
             return ResponseEntity.ok(toDTO(updated));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             log.error("Erro ao atualizar receita: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -179,10 +207,20 @@ public class RecipeController {
     }
 
     /**
-     * Exclui uma receita.
+     * Exclui uma receita verificando a posse do usuário.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteRecipe(@PathVariable Long id) {
+    public ResponseEntity<?> deleteRecipe(
+            @AuthenticationPrincipal AppUser user,
+            @PathVariable Long id) {
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        User recipeUser = userService.getOrCreateRecipeUser(user);
+        Optional<Recipe> existingOpt = recipeService.findRecipeByUserAndId(recipeUser.getTelegramChatId(), id);
+        if (existingOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
         boolean deleted = recipeService.deleteRecipeById(id);
         if (deleted) {
             return ResponseEntity.noContent().build();

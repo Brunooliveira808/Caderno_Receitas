@@ -21,14 +21,17 @@ public class AuthController {
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final ChefBot_Telegram.service.UserService userService;
 
     public AuthController(
             AppUserRepository appUserRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService) {
+            JwtService jwtService,
+            ChefBot_Telegram.service.UserService userService) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.userService = userService;
     }
 
     @PostMapping("/register")
@@ -99,5 +102,19 @@ public class AuthController {
                         u.getTelegramChatId()
                 )))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    }
+
+    @PostMapping("/link-code")
+    public ResponseEntity<?> generateLinkCode(@AuthenticationPrincipal AppUser user) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Não autenticado."));
+        }
+        try {
+            String code = userService.generateLinkCode(user.getId());
+            return ResponseEntity.ok(Map.of("code", code, "expiresInMinutes", 15));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 }

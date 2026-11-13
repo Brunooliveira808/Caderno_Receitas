@@ -36,6 +36,14 @@ public class AppUser {
     @Column(unique = true)
     private Long telegramChatId;
 
+    /**
+     * Código temporário para vincular a conta Web ao Telegram (ex: CHEF-8492).
+     */
+    @Column(length = 20)
+    private String linkCode;
+
+    private LocalDateTime linkCodeExpiresAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 

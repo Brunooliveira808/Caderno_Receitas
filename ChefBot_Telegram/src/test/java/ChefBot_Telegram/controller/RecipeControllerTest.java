@@ -42,13 +42,26 @@ class RecipeControllerTest {
     @MockitoBean
     private GeminiService geminiService;
 
+    @Autowired
+    private ChefBot_Telegram.service.UserService userService;
+
+    @Autowired
+    private ChefBot_Telegram.repository.AppUserRepository appUserRepository;
+
     private RecipeController recipeController;
+    private ChefBot_Telegram.model.AppUser defaultUser;
 
     @BeforeEach
     void setUp() {
         recipeRepository.deleteAll();
         userRepository.deleteAll();
-        recipeController = new RecipeController(recipeService, geminiService);
+        appUserRepository.deleteAll();
+
+        defaultUser = new ChefBot_Telegram.model.AppUser("teste@chefbot.com", "hash123", "Chef Teste");
+        defaultUser.setTelegramChatId(999999999L);
+        defaultUser = appUserRepository.save(defaultUser);
+
+        recipeController = new RecipeController(recipeService, geminiService, userService);
     }
 
     @Test
@@ -77,7 +90,7 @@ class RecipeControllerTest {
             new byte[]{1, 2, 3, 4}
         );
 
-        ResponseEntity<?> response = recipeController.createFromAudio(audioFile);
+        ResponseEntity<?> response = recipeController.createFromAudio(defaultUser, audioFile);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -108,6 +121,7 @@ class RecipeControllerTest {
             .thenReturn(updatedDto);
 
         ResponseEntity<?> response = recipeController.updateRecipeWithAi(
+            defaultUser,
             initialRecipe.getId(),
             Map.of("instructions", "aumente para 8 porções e 45 min")
         );
@@ -146,20 +160,20 @@ class RecipeControllerTest {
         recipeService.saveRecipeFromDTO(999999999L, "Web Chef", boloDto, "Bolo");
 
         // 1. Busca por "cheddar" em todas as categorias (deve trazer Burger e Pizza)
-        List<RecipeWebDTO> allWithCheddar = recipeController.getAllRecipes(null, "cheddar");
+        List<RecipeWebDTO> allWithCheddar = recipeController.getAllRecipes(defaultUser, null, "cheddar");
         assertEquals(2, allWithCheddar.size());
 
         // 2. Busca por "cheddar" dentro de "lanche" (deve trazer apenas o X-Burger)
-        List<RecipeWebDTO> lancheWithCheddar = recipeController.getAllRecipes("lanche", "cheddar");
+        List<RecipeWebDTO> lancheWithCheddar = recipeController.getAllRecipes(defaultUser, "lanche", "cheddar");
         assertEquals(1, lancheWithCheddar.size());
         assertEquals("X-Burger Artesanal", lancheWithCheddar.get(0).title());
 
         // 3. Busca por "cheddar" dentro de "sobremesa" (deve ser vazio)
-        List<RecipeWebDTO> sobremesaWithCheddar = recipeController.getAllRecipes("sobremesa", "cheddar");
+        List<RecipeWebDTO> sobremesaWithCheddar = recipeController.getAllRecipes(defaultUser, "sobremesa", "cheddar");
         assertEquals(0, sobremesaWithCheddar.size());
 
         // 4. Sem busca textual, apenas categoria
-        List<RecipeWebDTO> allLanches = recipeController.getAllRecipes("lanche", null);
+        List<RecipeWebDTO> allLanches = recipeController.getAllRecipes(defaultUser, "lanche", null);
         assertEquals(1, allLanches.size());
         assertEquals("X-Burger Artesanal", allLanches.get(0).title());
     }

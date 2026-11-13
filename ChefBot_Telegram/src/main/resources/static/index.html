@@ -744,7 +744,7 @@
 
         const url = '/api/recipes' + (params.toString() ? '?' + params.toString() : '');
         const res = await fetch(url, { headers: authHeaders() });
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 403) {
           openAuthModal();
           showLoading(false);
           return;
@@ -754,7 +754,11 @@
         renderRecipes(allRecipes);
       } catch (err) {
         console.error(err);
-        alert('Não foi possível carregar as receitas. Faça login ou verifique o servidor!');
+        if (!getAuthToken()) {
+          openAuthModal();
+        } else {
+          alert('Não foi possível carregar as receitas. Verifique sua conexão com o servidor!');
+        }
       } finally {
         showLoading(false);
       }
@@ -929,8 +933,9 @@
           method: 'DELETE',
           headers: authHeaders()
         });
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 403) {
           openAuthModal();
+          alert('Faça login ou crie uma conta para adicionar receitas!');
           return;
         }
         if (res.ok) {
@@ -985,8 +990,9 @@
           headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ text })
         });
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 403) {
           openAuthModal();
+          alert('Faça login ou crie uma conta para adicionar receitas!');
           return;
         }
         const data = await res.json();
@@ -1146,8 +1152,9 @@
           headers: authHeaders(),
           body: formData
         });
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 403) {
           openAuthModal();
+          alert('Faça login ou crie uma conta para adicionar receitas!');
           return;
         }
         const data = await res.json();
@@ -1218,8 +1225,9 @@
           headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ instructions })
         });
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 403) {
           openAuthModal();
+          alert('Faça login ou crie uma conta para adicionar receitas!');
           return;
         }
         const updated = await res.json();
@@ -1312,8 +1320,9 @@
             instructions
           })
         });
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 403) {
           openAuthModal();
+          alert('Faça login ou crie uma conta para adicionar receitas!');
           return;
         }
 

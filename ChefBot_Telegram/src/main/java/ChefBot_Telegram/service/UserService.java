@@ -41,13 +41,27 @@ public class UserService {
                 ? appUser.getTelegramChatId()
                 : (-1000000000L - appUser.getId());
 
-        return userRepository.findByTelegramChatId(targetChatId)
+        // Se o usuário ainda não tem receitas próprias, mas existem receitas legadas (chatId 999999999L),
+        // migra automaticamente essas receitas para este usuário!
+        Long legacyChatId = 999999999L;
+        List<Recipe> legacyRecipes = recipeRepository.findByUserTelegramChatId(legacyChatId);
+
+        User user = userRepository.findByTelegramChatId(targetChatId)
                 .orElseGet(() -> {
                     User newUser = new User();
                     newUser.setTelegramChatId(targetChatId);
                     newUser.setName(appUser.getName());
                     return userRepository.save(newUser);
                 });
+
+        if (!legacyRecipes.isEmpty()) {
+            for (Recipe r : legacyRecipes) {
+                r.setUser(user);
+            }
+            recipeRepository.saveAll(legacyRecipes);
+        }
+
+        return user;
     }
 
     /**

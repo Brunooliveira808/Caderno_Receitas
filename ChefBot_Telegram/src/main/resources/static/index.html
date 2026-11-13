@@ -39,9 +39,10 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     /* Estilos mobile e toques refinados */
-    body {
-      background-color: #FAF8F5;
+    html, body {
+      background-color: #ffffff;
       -webkit-tap-highlight-color: transparent;
+      min-height: 100%;
     }
     .hide-scrollbar::-webkit-scrollbar {
       display: none;
@@ -60,10 +61,10 @@
     }
   </style>
 </head>
-<body class="text-neutral-800 antialiased font-sans select-none pb-24">
+<body class="text-neutral-800 antialiased font-sans select-none bg-white">
 
   <!-- APP CONTAINER (Mobile Frame Centralizado em telas grandes) -->
-  <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative">
+  <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative pb-24">
 
     <!-- HEADER / TOPO -->
     <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-amber-100 px-5 pt-5 pb-3">
@@ -143,13 +144,13 @@
           Sobremesa
         </button>
         <button onclick="setFilter('bebida')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="bebida">
-          🍹 Bebidas
+          Bebidas
         </button>
         <button onclick="setFilter('petisco')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="petisco">
-          🍟 Petiscos
+          Petiscos
         </button>
         <button onclick="setFilter('molho')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="molho">
-          🥫 Molhos
+          Molhos
         </button>
       </div>
     </header>
@@ -175,8 +176,8 @@
     </main>
 
     <!-- BARRA INFERIOR FLUTUANTE: BOTÃO ADICIONAR -->
-    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-gradient-to-t from-white via-white/95 to-transparent p-4 flex justify-center z-20 pointer-events-none">
-      <button onclick="openAddModal()" class="pointer-events-auto bg-amber-400 hover:bg-amber-500 text-amber-950 px-6 py-3.5 rounded-full font-bold shadow-lg shadow-amber-300/60 flex items-center gap-2.5 transition transform active:scale-95 border-2 border-white">
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-sm border-t border-amber-100 p-4 flex justify-center z-20">
+      <button onclick="openAddModal()" class="bg-amber-400 hover:bg-amber-500 text-amber-950 px-6 py-3.5 rounded-full font-bold shadow-lg shadow-amber-300/60 flex items-center gap-2.5 transition transform active:scale-95 border-2 border-white">
         <div class="w-6 h-6 rounded-full bg-white flex items-center justify-center text-amber-600 shadow-sm">
           <i data-lucide="plus" class="w-4 h-4"></i>
         </div>

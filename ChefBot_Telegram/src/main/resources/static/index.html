@@ -81,12 +81,17 @@
         </div>
 
         <div class="flex items-center gap-1">
+          <!-- Botão de Usuário / Login -->
+          <button id="btn-user-profile" onclick="openAuthModal()" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600 transition relative" title="Perfil / Entrar">
+            <i data-lucide="user" class="w-5 h-5"></i>
+            <span id="auth-status-dot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white"></span>
+          </button>
           <!-- Botão de Instalar App PWA -->
           <button id="btn-install-pwa" onclick="installPWA()" class="hidden px-2.5 py-1.5 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="Instalar aplicativo">
             <i data-lucide="download" class="w-3.5 h-3.5"></i>
             <span>Instalar</span>
           </button>
-          <button onclick="fetchRecipes()" class="p-2.5 rounded-full hover:bg-neutral-100 text-neutral-600 transition" title="Atualizar">
+          <button onclick="fetchRecipes()" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600 transition" title="Atualizar">
             <i data-lucide="refresh-cw" class="w-5 h-5"></i>
           </button>
         </div>
@@ -409,6 +414,74 @@
       </div>
     </div>
 
+    <!-- MODAL 4: LOGIN / REGISTRO / CONTA -->
+    <div id="modal-auth" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl w-full max-w-sm p-6 relative shadow-2xl animate-scale-up">
+        
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+              <i data-lucide="chef-hat" class="w-5 h-5"></i>
+            </div>
+            <h3 id="auth-modal-title" class="font-black text-lg text-neutral-900">Minha Conta</h3>
+          </div>
+          <button onclick="closeAuthModal()" class="p-1.5 text-neutral-400 hover:text-neutral-700 rounded-full hover:bg-neutral-100">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Visão 1: Usuário Logado -->
+        <div id="auth-view-logged" class="hidden flex flex-col gap-4">
+          <div class="bg-neutral-50 border border-neutral-200/70 p-4 rounded-2xl">
+            <p class="text-xs text-neutral-500 uppercase tracking-wider font-semibold">Conectado como</p>
+            <p id="logged-user-name" class="font-bold text-base text-neutral-900 mt-0.5"></p>
+            <p id="logged-user-email" class="text-xs text-neutral-500"></p>
+            
+            <div class="mt-3 pt-3 border-t border-neutral-200/60 flex items-center justify-between text-xs">
+              <span class="text-neutral-500">Telegram:</span>
+              <span id="logged-user-telegram" class="font-semibold text-neutral-800">Não vinculado</span>
+            </div>
+          </div>
+
+          <button onclick="handleLogout()" class="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-2xl transition flex items-center justify-center gap-2">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+            Sair da Conta
+          </button>
+        </div>
+
+        <!-- Visão 2: Formulário de Login / Registro -->
+        <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="flex flex-col gap-3">
+          <div id="auth-name-container" class="hidden">
+            <label class="block text-xs font-bold mb-1 text-neutral-700">Seu Nome</label>
+            <input type="text" id="auth-name" placeholder="Ex: Chef Bruno" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold mb-1 text-neutral-700">E-mail</label>
+            <input type="email" id="auth-email" required placeholder="seu@email.com" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold mb-1 text-neutral-700">Senha</label>
+            <input type="password" id="auth-password" required minlength="6" placeholder="Mínimo 6 caracteres" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+          </div>
+
+          <div id="auth-error-msg" class="hidden p-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-medium"></div>
+
+          <button type="submit" id="btn-auth-submit" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl shadow-md transition flex items-center justify-center gap-2 mt-1">
+            <span>Entrar</span>
+          </button>
+
+          <div class="text-center mt-2">
+            <button type="button" onclick="toggleAuthMode()" id="btn-auth-toggle" class="text-xs text-amber-700 hover:text-amber-800 font-medium">
+              Não tem conta? Cadastre-se
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+
   </div>
 
   <!-- SCRIPT DA APLICAÇÃO -->
@@ -419,6 +492,141 @@
     let allRecipes = [];
     let selectedRecipe = null;
     let deferredPrompt = null;
+    let currentUser = null;
+    let authMode = 'login'; // 'login' ou 'register'
+
+    // Helpers de Autenticação JWT
+    function getAuthToken() {
+      return localStorage.getItem('chefbot_jwt_token');
+    }
+
+    function setAuthToken(token) {
+      if (token) {
+        localStorage.setItem('chefbot_jwt_token', token);
+      } else {
+        localStorage.removeItem('chefbot_jwt_token');
+      }
+    }
+
+    function authHeaders(existingHeaders = {}) {
+      const headers = { ...existingHeaders };
+      const token = getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      return headers;
+    }
+
+    async function checkAuthSession() {
+      const token = getAuthToken();
+      const dot = document.getElementById('auth-status-dot');
+      if (!token) {
+        currentUser = null;
+        if (dot) dot.classList.add('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/me', { headers: authHeaders() });
+        if (res.ok) {
+          currentUser = await res.json();
+          if (dot) dot.classList.remove('hidden');
+        } else {
+          setAuthToken(null);
+          currentUser = null;
+          if (dot) dot.classList.add('hidden');
+        }
+      } catch (e) {
+        console.warn('Erro ao verificar sessão:', e);
+      }
+    }
+
+    function openAuthModal() {
+      const modal = document.getElementById('modal-auth');
+      const viewLogged = document.getElementById('auth-view-logged');
+      const form = document.getElementById('auth-form');
+      const errBox = document.getElementById('auth-error-msg');
+      errBox.classList.add('hidden');
+
+      if (currentUser) {
+        document.getElementById('auth-modal-title').innerText = 'Minha Conta';
+        document.getElementById('logged-user-name').innerText = currentUser.name;
+        document.getElementById('logged-user-email').innerText = currentUser.email;
+        document.getElementById('logged-user-telegram').innerText = currentUser.telegramChatId ? `#${currentUser.telegramChatId}` : 'Não vinculado';
+        viewLogged.classList.remove('hidden');
+        form.classList.add('hidden');
+      } else {
+        viewLogged.classList.add('hidden');
+        form.classList.remove('hidden');
+        updateAuthModeUI();
+      }
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeAuthModal() {
+      document.getElementById('modal-auth').classList.add('hidden');
+    }
+
+    function toggleAuthMode() {
+      authMode = (authMode === 'login') ? 'register' : 'login';
+      updateAuthModeUI();
+    }
+
+    function updateAuthModeUI() {
+      const isLogin = authMode === 'login';
+      document.getElementById('auth-modal-title').innerText = isLogin ? 'Entrar no ChefBot' : 'Criar Nova Conta';
+      document.getElementById('auth-name-container').classList.toggle('hidden', isLogin);
+      document.getElementById('btn-auth-submit').querySelector('span').innerText = isLogin ? 'Entrar' : 'Cadastrar';
+      document.getElementById('btn-auth-toggle').innerText = isLogin 
+        ? 'Não tem conta? Cadastre-se' 
+        : 'Já possui uma conta? Faça login';
+      document.getElementById('auth-error-msg').classList.add('hidden');
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const errBox = document.getElementById('auth-error-msg');
+      errBox.classList.add('hidden');
+
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value;
+      const name = document.getElementById('auth-name').value.trim();
+
+      const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
+      const body = authMode === 'login' ? { email, password } : { email, password, name };
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (res.ok && data.token) {
+          setAuthToken(data.token);
+          currentUser = data;
+          document.getElementById('auth-status-dot').classList.remove('hidden');
+          closeAuthModal();
+          fetchRecipes();
+        } else {
+          errBox.innerText = data.error || 'Falha na autenticação.';
+          errBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        errBox.innerText = 'Erro ao conectar ao servidor.';
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    function handleLogout() {
+      setAuthToken(null);
+      currentUser = null;
+      document.getElementById('auth-status-dot').classList.add('hidden');
+      closeAuthModal();
+      fetchRecipes();
+    }
 
     // Registro do PWA Service Worker & Install Prompt
     if ('serviceWorker' in navigator) {
@@ -454,8 +662,9 @@
     }
 
     // Inicialização
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
+      await checkAuthSession();
       fetchRecipes();
     });
 
@@ -498,13 +707,18 @@
         }
 
         const url = '/api/recipes' + (params.toString() ? '?' + params.toString() : '');
-        const res = await fetch(url);
+        const res = await fetch(url, { headers: authHeaders() });
+        if (res.status === 401) {
+          openAuthModal();
+          showLoading(false);
+          return;
+        }
         if (!res.ok) throw new Error('Falha ao buscar receitas');
         allRecipes = await res.json();
         renderRecipes(allRecipes);
       } catch (err) {
         console.error(err);
-        alert('Não foi possível carregar as receitas. Verifique o servidor!');
+        alert('Não foi possível carregar as receitas. Faça login ou verifique o servidor!');
       } finally {
         showLoading(false);
       }
@@ -675,7 +889,14 @@
     async function deleteRecipe(id) {
       if (!confirm('Deseja realmente deletar esta receita?')) return;
       try {
-        const res = await fetch(`/api/recipes/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/recipes/${id}`, { 
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+        if (res.status === 401) {
+          openAuthModal();
+          return;
+        }
         if (res.ok) {
           fetchRecipes();
         } else {
@@ -725,9 +946,13 @@
       try {
         const res = await fetch('/api/recipes/from-text', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ text })
         });
+        if (res.status === 401) {
+          openAuthModal();
+          return;
+        }
         const data = await res.json();
         if (res.ok) {
           document.getElementById('recipe-text-input').value = '';
@@ -882,8 +1107,13 @@
       try {
         const res = await fetch('/api/recipes/from-audio', {
           method: 'POST',
+          headers: authHeaders(),
           body: formData
         });
+        if (res.status === 401) {
+          openAuthModal();
+          return;
+        }
         const data = await res.json();
         if (res.ok) {
           closeAddModal();
@@ -949,9 +1179,13 @@
       try {
         const res = await fetch(`/api/recipes/${id}/ai-update`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ instructions })
         });
+        if (res.status === 401) {
+          openAuthModal();
+          return;
+        }
         const updated = await res.json();
         if (res.ok) {
           closeEditModal();
@@ -1032,7 +1266,7 @@
       try {
         const res = await fetch(`/api/recipes/${id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             title,
             category,
@@ -1042,6 +1276,10 @@
             instructions
           })
         });
+        if (res.status === 401) {
+          openAuthModal();
+          return;
+        }
 
         if (res.ok) {
           closeEditModal();

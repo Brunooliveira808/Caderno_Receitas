@@ -66,6 +66,7 @@ public class RecipeService {
 
     /**
      * Busca ou cria o usuário pelo telegramChatId e salva a receita com ingredientes e passos.
+     * Possui proteção contra duplicação acidental recente (idempotência nos últimos 30 segundos).
      */
     @Transactional
     public Recipe saveRecipeFromDTO(Long telegramChatId, String userName, RecipeResponseDTO dto, String rawTranscript) {
@@ -77,9 +78,26 @@ public class RecipeService {
                 return userRepository.save(newUser);
             });
 
+        String targetTitle = (dto.title() != null && !dto.title().isBlank()) ? dto.title().trim() : "Receita sem título";
+
+        // Trava de idempotência: se o mesmo usuário salvou uma receita idêntica nos últimos 30 segundos,
+        // retorna a receita já salva para evitar duplicidade acidental.
+        List<Recipe> existingUserRecipes = recipeRepository.findByUserTelegramChatId(telegramChatId);
+        if (!existingUserRecipes.isEmpty()) {
+            java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().minusSeconds(30);
+            for (Recipe r : existingUserRecipes) {
+                if (r.getCreatedAt() != null && r.getCreatedAt().isAfter(cutoff)) {
+                    if (normalizeText(r.getTitle()).equals(normalizeText(targetTitle))) {
+                        log.info("Receita duplicada recente detectada ('{}'). Retornando receita existente ID #{}", targetTitle, r.getId());
+                        return r;
+                    }
+                }
+            }
+        }
+
         Recipe recipe = new Recipe();
         recipe.setUser(user);
-        recipe.setTitle(dto.title() != null ? dto.title() : "Receita sem título");
+        recipe.setTitle(targetTitle);
         recipe.setCategory(normalizeCategory(dto.category()));
         recipe.setSourceAuthor(dto.sourceAuthor());
         recipe.setPrepTimeMinutes(dto.prepTimeMinutes());

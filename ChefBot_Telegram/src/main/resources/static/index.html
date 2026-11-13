@@ -1345,8 +1345,25 @@
 
     function setAiProcessing(active) {
       document.getElementById('ai-processing').classList.toggle('hidden', !active);
-      document.getElementById('btn-send-audio').disabled = active;
-      document.getElementById('btn-send-text').disabled = active;
+      const btnAudio = document.getElementById('btn-send-audio');
+      const btnText = document.getElementById('btn-send-text');
+      if (btnAudio) {
+        btnAudio.disabled = active;
+        btnAudio.classList.toggle('opacity-50', active);
+        btnAudio.classList.toggle('cursor-not-allowed', active);
+        btnAudio.innerHTML = active
+          ? '<div class="w-5 h-5 border-2 border-amber-950 border-t-transparent rounded-full animate-spin"></div> Processando com IA...'
+          : '<i data-lucide="sparkles" class="w-5 h-5 text-red-600"></i> Extrair Receita com IA';
+      }
+      if (btnText) {
+        btnText.disabled = active;
+        btnText.classList.toggle('opacity-50', active);
+        btnText.classList.toggle('cursor-not-allowed', active);
+        btnText.innerHTML = active
+          ? '<div class="w-5 h-5 border-2 border-amber-950 border-t-transparent rounded-full animate-spin"></div> Processando com IA...'
+          : '<i data-lucide="sparkles" class="w-5 h-5 text-red-600"></i> Extrair e Salvar com IA';
+      }
+      lucide.createIcons();
     }
   </script>
 </body>

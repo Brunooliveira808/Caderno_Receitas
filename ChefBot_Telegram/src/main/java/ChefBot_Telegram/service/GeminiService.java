@@ -57,14 +57,16 @@ public class GeminiService {
         - Se for texto, reproduza o texto original do usuário.
 
         3. CATEGORIZAÇÃO OFICIAL:
-        - O campo "category" DEVE ser obrigatoriamente UMA destas 6 opções em minúsculo:
+        - O campo "category" DEVE ser obrigatoriamente UMA destas 8 opções em minúsculo:
           - "café da manhã" (pães, ovos, panquecas, vitaminas matinais, café)
           - "almoço" (refeições principais, arroz, feijão, carnes, massas salgadas)
-          - "lanche" (salgados, sanduíches, petiscos, tortas salgadas, snacks)
+          - "lanche" (salgados, sanduíches, tortas salgadas, snacks)
           - "jantar" (sopas, caldos, refeições leves ou noturnas)
-          - "ceia" (chás, alimentos leves antes de dormir)
+          - "ceia" (chás noturnos, alimentos leves antes de dormir)
           - "sobremesa" (bolos, doces, tortas doces, pudins, sobremesas geladas)
-        - Se o usuário não explicitar, deduza com base no tipo de comida. Nunca use categorias fora desta lista de 6 opções.
+          - "bebida" (sucos, drinks, coquetéis, vitaminas, batidas, smoothies, chás, cafés gelados)
+          - "petisco" (aperitivos, tira-gostos, porções de boteco, finger foods, canapés, tábuas)
+        - Se o usuário não explicitar, deduza com base no tipo de comida ou bebida. Nunca use categorias fora desta lista de 8 opções.
 
         4. PRESERVAÇÃO EXATA DO TÍTULO (CRÍTICO):
         - Se o usuário forneceu um nome ou título (ex: "Bolo de Cenoura da Mamãe", "Arroz de forno", "Miojo com requeijão"), use EXATAMENTE o nome dito pelo usuário. NÃO altere, não invente subtítulos, não "embeleze" e não troque por nomes genéricos.
@@ -87,7 +89,7 @@ public class GeminiService {
           "isRecipe": true,
           "refusalReason": null,
           "title": "Título Exato Informado pelo Usuário",
-          "category": "café da manhã / almoço / lanche / jantar / ceia / sobremesa",
+          "category": "café da manhã / almoço / lanche / jantar / ceia / sobremesa / bebida / petisco",
           "sourceAuthor": "Quem ensinou ou null",
           "prepTimeMinutes": null,
           "portions": null,

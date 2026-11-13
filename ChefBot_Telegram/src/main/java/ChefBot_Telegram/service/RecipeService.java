@@ -27,7 +27,7 @@ public class RecipeService {
     private static final Logger log = LoggerFactory.getLogger(RecipeService.class);
 
     public static final List<String> VALID_CATEGORIES = List.of(
-        "café da manhã", "almoço", "lanche", "jantar", "ceia", "sobremesa"
+        "café da manhã", "almoço", "lanche", "jantar", "ceia", "sobremesa", "bebida", "petisco"
     );
 
     private final UserRepository userRepository;
@@ -50,8 +50,10 @@ public class RecipeService {
         if (norm.contains("almoco") || norm.contains("prato principal")) return "almoço";
         if (norm.contains("janta")) return "jantar";
         if (norm.contains("ceia")) return "ceia";
+        if (norm.contains("bebida") || norm.contains("suco") || norm.contains("drink") || norm.contains("cha") || norm.contains("vitamina") || norm.contains("smoothie") || norm.contains("coquetel")) return "bebida";
+        if (norm.contains("petisco") || norm.contains("tira gosto") || norm.contains("aperitivo") || norm.contains("tira-gosto") || norm.contains("boteco") || norm.contains("canapé")) return "petisco";
         if (norm.contains("sobremesa") || norm.contains("doce") || norm.contains("bolo") || norm.contains("pudim") || norm.contains("torta doce")) return "sobremesa";
-        if (norm.contains("lanche") || norm.contains("salgado") || norm.contains("bebida") || norm.contains("petisco")) return "lanche";
+        if (norm.contains("lanche") || norm.contains("salgado") || norm.contains("sanduiche")) return "lanche";
         
         for (String valid : VALID_CATEGORIES) {
             if (normalizeText(valid).equals(norm)) {

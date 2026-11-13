@@ -136,7 +136,11 @@ class RecipeServiceUpdatePersistenceTest {
         assertEquals("jantar", recipeService.normalizeCategory("janta leve"));
         assertEquals("ceia", recipeService.normalizeCategory("ceia noturna"));
         assertEquals("sobremesa", recipeService.normalizeCategory("Doces / Sobremesas"));
-        assertEquals("lanche", recipeService.normalizeCategory("petiscos e salgados"));
+        assertEquals("bebida", recipeService.normalizeCategory("Drink de Morango"));
+        assertEquals("bebida", recipeService.normalizeCategory("Suco Natural detox"));
+        assertEquals("petisco", recipeService.normalizeCategory("Tira-gosto de boteco"));
+        assertEquals("petisco", recipeService.normalizeCategory("Aperitivo com queijo"));
+        assertEquals("lanche", recipeService.normalizeCategory("pastel salgado"));
         assertEquals("lanche", recipeService.normalizeCategory(null));
     }
 

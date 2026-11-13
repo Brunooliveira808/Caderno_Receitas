@@ -140,6 +140,8 @@ class RecipeServiceUpdatePersistenceTest {
         assertEquals("bebida", recipeService.normalizeCategory("Suco Natural detox"));
         assertEquals("petisco", recipeService.normalizeCategory("Tira-gosto de boteco"));
         assertEquals("petisco", recipeService.normalizeCategory("Aperitivo com queijo"));
+        assertEquals("molho", recipeService.normalizeCategory("Molho Pesto Genovês"));
+        assertEquals("molho", recipeService.normalizeCategory("Vinagrete para churrasco"));
         assertEquals("lanche", recipeService.normalizeCategory("pastel salgado"));
         assertEquals("lanche", recipeService.normalizeCategory(null));
     }

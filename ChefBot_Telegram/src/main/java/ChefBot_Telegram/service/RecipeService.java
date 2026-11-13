@@ -27,7 +27,7 @@ public class RecipeService {
     private static final Logger log = LoggerFactory.getLogger(RecipeService.class);
 
     public static final List<String> VALID_CATEGORIES = List.of(
-        "café da manhã", "almoço", "lanche", "jantar", "ceia", "sobremesa", "bebida", "petisco"
+        "café da manhã", "almoço", "lanche", "jantar", "ceia", "sobremesa", "bebida", "petisco", "molho"
     );
 
     private final UserRepository userRepository;
@@ -50,6 +50,7 @@ public class RecipeService {
         if (norm.contains("almoco") || norm.contains("prato principal")) return "almoço";
         if (norm.contains("janta")) return "jantar";
         if (norm.contains("ceia")) return "ceia";
+        if (norm.contains("molho") || norm.contains("pesto") || norm.contains("vinagrete") || norm.contains("maionese") || norm.contains("pate") || norm.contains("chutney")) return "molho";
         if (norm.contains("bebida") || norm.contains("suco") || norm.contains("drink") || norm.contains("cha") || norm.contains("vitamina") || norm.contains("smoothie") || norm.contains("coquetel")) return "bebida";
         if (norm.contains("petisco") || norm.contains("tira gosto") || norm.contains("aperitivo") || norm.contains("tira-gosto") || norm.contains("boteco") || norm.contains("canapé")) return "petisco";
         if (norm.contains("sobremesa") || norm.contains("doce") || norm.contains("bolo") || norm.contains("pudim") || norm.contains("torta doce")) return "sobremesa";

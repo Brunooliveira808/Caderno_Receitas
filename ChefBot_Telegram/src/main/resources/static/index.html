@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ChefBot Culinário</title>
+
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#F59E0B">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ChefBot">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -70,9 +80,16 @@
           </div>
         </div>
 
-        <button onclick="fetchRecipes()" class="p-2.5 rounded-full hover:bg-neutral-100 text-neutral-600 transition" title="Atualizar">
-          <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-        </button>
+        <div class="flex items-center gap-1">
+          <!-- Botão de Instalar App PWA -->
+          <button id="btn-install-pwa" onclick="installPWA()" class="hidden px-2.5 py-1.5 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="Instalar aplicativo">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Instalar</span>
+          </button>
+          <button onclick="fetchRecipes()" class="p-2.5 rounded-full hover:bg-neutral-100 text-neutral-600 transition" title="Atualizar">
+            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+          </button>
+        </div>
       </div>
 
       <!-- BARRA DE PESQUISA -->
@@ -401,6 +418,40 @@
     let searchDebounceTimeout = null;
     let allRecipes = [];
     let selectedRecipe = null;
+    let deferredPrompt = null;
+
+    // Registro do PWA Service Worker & Install Prompt
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('ServiceWorker registrado:', reg.scope))
+          .catch(err => console.warn('Falha ao registrar ServiceWorker:', err));
+      });
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const installBtn = document.getElementById('btn-install-pwa');
+      if (installBtn) {
+        installBtn.classList.remove('hidden');
+        lucide.createIcons();
+      }
+    });
+
+    async function installPWA() {
+      if (!deferredPrompt) {
+        alert('Para instalar no iOS Safari, toque no botão "Compartilhar" e depois em "Adicionar à Tela de Início".');
+        return;
+      }
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        const installBtn = document.getElementById('btn-install-pwa');
+        if (installBtn) installBtn.classList.add('hidden');
+      }
+      deferredPrompt = null;
+    }
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', () => {

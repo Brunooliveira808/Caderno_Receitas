@@ -1,10 +1,8 @@
-const CACHE_NAME = 'chefbot-cache-v3';
+const CACHE_NAME = 'chefbot-cache-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/js/tailwind.min.js',
-  '/js/lucide.min.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png'
 ];

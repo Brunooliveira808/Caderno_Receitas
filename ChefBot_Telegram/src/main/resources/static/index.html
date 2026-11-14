@@ -85,6 +85,11 @@
         </div>
 
         <div class="flex items-center gap-1">
+          <!-- Indicador discreto de sync em background -->
+          <div id="sync-indicator" class="hidden flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold animate-pulse">
+            <i data-lucide="refresh-cw" class="w-3 h-3 animate-spin text-amber-600"></i>
+            <span>Sincronizando</span>
+          </div>
           <!-- Botão de Atualizar -->
           <button onclick="refreshActiveTab()" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600 transition" title="Atualizar">
             <i data-lucide="refresh-cw" class="w-5 h-5"></i>
@@ -636,6 +641,48 @@
     let currentUser = null;
     let authMode = 'login';
 
+    // Gerenciador de Cache Local (Padrão SWR - Stale-While-Revalidate)
+    const CacheManager = {
+      KEYS: {
+        MY_RECIPES: 'chefbot_cache_my_recipes',
+        EXPLORE: 'chefbot_cache_explore',
+        PROFILE: 'chefbot_cache_profile'
+      },
+      get(key) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          return parsed ? parsed.data : null;
+        } catch (e) {
+          console.warn('Erro ao ler cache:', key, e);
+          return null;
+        }
+      },
+      set(key, data) {
+        try {
+          localStorage.setItem(key, JSON.stringify({
+            timestamp: Date.now(),
+            data: data
+          }));
+        } catch (e) {
+          console.warn('Erro ao gravar cache:', key, e);
+        }
+      },
+      clear() {
+        try {
+          localStorage.removeItem(this.KEYS.MY_RECIPES);
+          localStorage.removeItem(this.KEYS.EXPLORE);
+          localStorage.removeItem(this.KEYS.PROFILE);
+        } catch (e) {}
+      }
+    };
+
+    function setSyncIndicator(active) {
+      const el = document.getElementById('sync-indicator');
+      if (el) el.classList.toggle('hidden', !active);
+    }
+
     // Helpers de Autenticação JWT
     function getAuthToken() {
       return localStorage.getItem('chefbot_jwt_token');
@@ -712,87 +759,117 @@
       else if (activeTab === 'profile') loadUserProfile();
     }
 
-    // 2. ABA EXPLORAR: Feed público e busca
+    // 2. ABA EXPLORAR: Feed público e busca com Stale-While-Revalidate (SWR)
     async function fetchExploreRecipes() {
       const loading = document.getElementById('explore-loading');
       const emptyState = document.getElementById('explore-empty-state');
       const container = document.getElementById('explore-recipe-list');
       const countEl = document.getElementById('explore-count');
-      
-      loading.classList.remove('hidden');
-      container.innerHTML = '';
-      emptyState.classList.add('hidden');
+
+      // 1. Instant Boot: se não houver busca ativa, tenta renderizar do cache imediatamente (0ms)
+      const isFiltered = (exploreSearchQuery && exploreSearchQuery.length > 0);
+      const cached = !isFiltered ? CacheManager.get(CacheManager.KEYS.EXPLORE) : null;
+      if (cached && Array.isArray(cached) && cached.length > 0) {
+        exploreRecipesList = cached;
+        renderExploreRecipes(exploreRecipesList);
+        countEl.innerText = `${exploreRecipesList.length} receitas públicas`;
+        loading.classList.add('hidden');
+      } else {
+        if (!exploreRecipesList || exploreRecipesList.length === 0) {
+          loading.classList.remove('hidden');
+        }
+      }
+
+      setSyncIndicator(true);
 
       try {
         const url = '/api/recipes/explore' + (exploreSearchQuery ? `?query=${encodeURIComponent(exploreSearchQuery)}` : '');
         const res = await fetch(url, { headers: authHeaders() });
         if (!res.ok) throw new Error('Falha ao carregar explorar');
-        exploreRecipesList = await res.json();
+        const freshData = await res.json();
         
         loading.classList.add('hidden');
+        exploreRecipesList = freshData;
         countEl.innerText = `${exploreRecipesList.length} receitas públicas`;
 
-        if (exploreRecipesList.length === 0) {
-          emptyState.classList.remove('hidden');
-          return;
+        if (!isFiltered) {
+          CacheManager.set(CacheManager.KEYS.EXPLORE, freshData);
         }
 
-        exploreRecipesList.forEach(r => {
-          const card = document.createElement('div');
-          card.className = "bg-white border border-neutral-100 rounded-3xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between cursor-pointer border-l-4 border-l-amber-500";
-          card.onclick = (e) => {
-            if (!e.target.closest('.action-btn')) {
-              openDetailsModal(r, true);
-            }
-          };
-
-          const author = r.authorUsername ? `@${r.authorUsername}` : (r.sourceAuthor || 'Chef Anônimo');
-          const prepTime = r.prepTimeMinutes ? `${r.prepTimeMinutes} min` : 'Tempo livre';
-          const forkCount = r.forkCount || 0;
-
-          card.innerHTML = `
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900">
-                    ${r.category || 'Geral'}
-                  </span>
-                  <span class="text-xs text-amber-700 font-semibold flex items-center gap-0.5">
-                    <i data-lucide="user" class="w-3 h-3"></i> ${author}
-                  </span>
-                </div>
-                <h3 class="font-bold text-base text-neutral-900 leading-snug">${r.title || 'Receita sem título'}</h3>
-              </div>
-
-              <!-- Botão Puxar para Minhas Receitas -->
-              <div class="action-btn">
-                <button onclick="forkRecipe(${r.id})" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-200 shadow-sm" title="Puxar para meu caderno">
-                  <i data-lucide="download" class="w-3.5 h-3.5 text-amber-700"></i>
-                  <span>Puxar</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="mt-4 flex items-center justify-between text-xs text-neutral-500 pt-2 border-t border-neutral-100">
-              <span class="flex items-center gap-1">
-                <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i>
-                ${prepTime}
-              </span>
-              <span class="flex items-center gap-1 text-amber-800 font-medium">
-                <i data-lucide="git-fork" class="w-3.5 h-3.5"></i>
-                ${forkCount} salvamentos
-              </span>
-            </div>
-          `;
-          container.appendChild(card);
-        });
-
+        renderExploreRecipes(exploreRecipesList);
       } catch (e) {
-        console.error(e);
+        console.warn('Erro ao atualizar feed de explorar:', e);
         loading.classList.add('hidden');
+        if (!exploreRecipesList || exploreRecipesList.length === 0) {
+          emptyState.classList.remove('hidden');
+        }
       } finally {
+        setSyncIndicator(false);
         lucide.createIcons();
       }
+    }
+
+    function renderExploreRecipes(recipes) {
+      const emptyState = document.getElementById('explore-empty-state');
+      const container = document.getElementById('explore-recipe-list');
+      container.innerHTML = '';
+
+      if (!recipes || recipes.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      recipes.forEach(r => {
+        const card = document.createElement('div');
+        card.className = "bg-white border border-neutral-100 rounded-3xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between cursor-pointer border-l-4 border-l-amber-500";
+        card.onclick = (e) => {
+          if (!e.target.closest('.action-btn')) {
+            openDetailsModal(r, true);
+          }
+        };
+
+        const author = r.authorUsername ? `@${r.authorUsername}` : (r.sourceAuthor || 'Chef Anônimo');
+        const prepTime = r.prepTimeMinutes ? `${r.prepTimeMinutes} min` : 'Tempo livre';
+        const forkCount = r.forkCount || 0;
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900">
+                  ${r.category || 'Geral'}
+                </span>
+                <span class="text-xs text-amber-700 font-semibold flex items-center gap-0.5">
+                  <i data-lucide="user" class="w-3 h-3"></i> ${author}
+                </span>
+              </div>
+              <h3 class="font-bold text-base text-neutral-900 leading-snug">${r.title || 'Receita sem título'}</h3>
+            </div>
+
+            <!-- Botão Puxar para Minhas Receitas -->
+            <div class="action-btn">
+              <button onclick="forkRecipe(${r.id})" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-200 shadow-sm" title="Puxar para meu caderno">
+                <i data-lucide="download" class="w-3.5 h-3.5 text-amber-700"></i>
+                <span>Puxar</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-4 flex items-center justify-between text-xs text-neutral-500 pt-2 border-t border-neutral-100">
+            <span class="flex items-center gap-1">
+              <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i>
+              ${prepTime}
+            </span>
+            <span class="flex items-center gap-1 text-amber-800 font-medium">
+              <i data-lucide="git-fork" class="w-3.5 h-3.5"></i>
+              ${forkCount} salvamentos
+            </span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
     }
 
     function handleExploreSearch(val) {
@@ -932,9 +1009,24 @@
       }
     }
 
-    // 5. ABA MINHAS RECEITAS (Caderno Pessoal)
+    // 5. ABA MINHAS RECEITAS (Caderno Pessoal com SWR e Instant Boot)
     async function fetchRecipes() {
-      showLoading(true);
+      const isFiltered = (currentFilter !== 'Todos' || (searchQuery && searchQuery.length > 0));
+
+      // 1. Instant Boot: se for a visualização padrão inicial, lê do cache e exibe em 0ms
+      const cached = (!isFiltered) ? CacheManager.get(CacheManager.KEYS.MY_RECIPES) : null;
+      if (cached && Array.isArray(cached) && cached.length > 0) {
+        allRecipes = cached;
+        renderRecipes(allRecipes);
+        showLoading(false);
+      } else {
+        if (!allRecipes || allRecipes.length === 0) {
+          showLoading(true);
+        }
+      }
+
+      setSyncIndicator(true);
+
       try {
         const params = new URLSearchParams();
         if (currentFilter !== 'Todos') {
@@ -952,12 +1044,19 @@
           return;
         }
         if (!res.ok) throw new Error('Falha ao buscar receitas');
-        allRecipes = await res.json();
+        const freshRecipes = await res.json();
+        allRecipes = freshRecipes;
+
+        if (!isFiltered) {
+          CacheManager.set(CacheManager.KEYS.MY_RECIPES, freshRecipes);
+        }
+
         renderRecipes(allRecipes);
       } catch (err) {
-        console.error(err);
+        console.warn('Erro ao atualizar receitas em segundo plano:', err);
       } finally {
         showLoading(false);
+        setSyncIndicator(false);
       }
     }
 
@@ -1079,7 +1178,7 @@
       fetchRecipes();
     }
 
-    // 6. ABA PERFIL (Carregar dados do usuário)
+    // 6. ABA PERFIL (Carregar dados do usuário com cache SWR)
     async function loadUserProfile() {
       const loggedView = document.getElementById('profile-logged-view');
       const guestView = document.getElementById('profile-guest-view');
@@ -1088,6 +1187,19 @@
         loggedView.classList.add('hidden');
         guestView.classList.remove('hidden');
         return;
+      }
+
+      // 1. Instant Boot do perfil a partir do cache
+      const cachedProfile = CacheManager.get(CacheManager.KEYS.PROFILE);
+      if (cachedProfile && cachedProfile.username) {
+        document.getElementById('profile-avatar-initial').innerText = (cachedProfile.name || 'C').charAt(0).toUpperCase();
+        document.getElementById('profile-name').innerText = cachedProfile.name || 'Chef';
+        document.getElementById('profile-username').innerText = '@' + cachedProfile.username;
+        document.getElementById('stat-recipes-count').innerText = cachedProfile.recipesCount || 0;
+        document.getElementById('stat-followers-count').innerText = cachedProfile.followersCount || 0;
+        document.getElementById('stat-following-count').innerText = cachedProfile.followingCount || 0;
+        guestView.classList.add('hidden');
+        loggedView.classList.remove('hidden');
       }
 
       try {
@@ -1112,13 +1224,16 @@
           document.getElementById('stat-recipes-count').innerText = profileData.recipesCount || 0;
           document.getElementById('stat-followers-count').innerText = profileData.followersCount || 0;
           document.getElementById('stat-following-count').innerText = profileData.followingCount || 0;
+          CacheManager.set(CacheManager.KEYS.PROFILE, profileData);
         }
 
         guestView.classList.add('hidden');
         loggedView.classList.remove('hidden');
       } catch (e) {
-        loggedView.classList.add('hidden');
-        guestView.classList.remove('hidden');
+        if (!cachedProfile) {
+          loggedView.classList.add('hidden');
+          guestView.classList.remove('hidden');
+        }
       } finally {
         lucide.createIcons();
       }
@@ -1640,6 +1755,7 @@
     function handleLogout() {
       setAuthToken(null);
       currentUser = null;
+      CacheManager.clear();
       switchTab('my-recipes');
       fetchRecipes();
     }

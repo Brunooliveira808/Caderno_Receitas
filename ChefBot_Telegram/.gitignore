@@ -1,0 +1,4 @@
+.gradle_user/
+.m2_repo/
+src_legacy_telegram/
+src_legacy_telegram_tests/

@@ -34,14 +34,39 @@ public class RecipeController {
     private final RecipeService recipeService;
     private final GeminiService geminiService;
     private final UserService userService;
+    private final ChefBot_Telegram.repository.RecipeRepository recipeRepository;
 
     public RecipeController(
             RecipeService recipeService,
             GeminiService geminiService,
             UserService userService) {
+        this(recipeService, geminiService, userService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public RecipeController(
+            RecipeService recipeService,
+            GeminiService geminiService,
+            UserService userService,
+            ChefBot_Telegram.repository.RecipeRepository recipeRepository) {
         this.recipeService = recipeService;
         this.geminiService = geminiService;
         this.userService = userService;
+        this.recipeRepository = recipeRepository;
+    }
+
+    /**
+     * Feed público de receitas para a aba Explorar, com busca textual opcional.
+     */
+    @GetMapping("/explore")
+    public List<RecipeWebDTO> exploreRecipes(@RequestParam(required = false) String query) {
+        List<Recipe> recipes = (query != null && !query.isBlank())
+                ? recipeRepository.searchPublicRecipes(query.trim())
+                : recipeRepository.findAllPublicRecipes();
+
+        return recipes.stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
     /**

@@ -68,6 +68,17 @@ public class DatabaseMigrationConfig {
                     ");"
                 );
 
+                // 7. Garantir tabela de seguidores (user_follows)
+                jdbcTemplate.execute(
+                    "CREATE TABLE IF NOT EXISTS user_follows (" +
+                    "  id BIGSERIAL PRIMARY KEY," +
+                    "  follower_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE," +
+                    "  following_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE," +
+                    "  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+                    "  CONSTRAINT uk_user_follows_follower_following UNIQUE (follower_id, following_id)" +
+                    ");"
+                );
+
                 log.info("Migração defensiva concluída com sucesso no PostgreSQL!");
             } catch (Exception e) {
                 log.warn("Nota na migração de schema: {}", e.getMessage());

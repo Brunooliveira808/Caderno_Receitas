@@ -1,4 +1,4 @@
-# TASK 15: Modo Cozinha & Compartilhamento Social
+# TASK 19: Modo Cozinha & Compartilhamento Social
 
 ## 📌 Contexto & Objetivo
 Adicionar funcionalidades de usabilidade avançada para quem está cozinhando e compartilhamento nativo de receitas em redes sociais.

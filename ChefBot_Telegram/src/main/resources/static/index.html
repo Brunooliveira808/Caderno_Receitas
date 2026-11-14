@@ -1191,17 +1191,24 @@
       const instList = document.getElementById('detail-instructions');
       instList.innerHTML = '';
       if (recipe.instructions && recipe.instructions.length > 0) {
-        recipe.instructions.forEach(ins => {
+        recipe.instructions.forEach((ins, idx) => {
+          const stepNum = ins.stepNumber || (idx + 1);
+          const stepText = ins.description || ins.instructionText || '';
           const li = document.createElement('li');
-          li.className = "flex items-start gap-3 p-2 rounded-xl hover:bg-neutral-50 transition";
+          li.className = "flex items-start gap-3 p-3 rounded-2xl bg-neutral-50 border border-neutral-100 text-neutral-800 transition";
           li.innerHTML = `
-            <span class="w-6 h-6 rounded-full bg-amber-400 text-amber-950 font-bold text-xs flex items-center justify-center shrink-0">
-              ${ins.stepNumber || 1}
+            <span class="w-6 h-6 rounded-full bg-amber-400 text-amber-950 font-black text-xs flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+              ${stepNum}
             </span>
-            <p class="leading-relaxed">${ins.instructionText || ''}</p>
+            <p class="leading-relaxed text-sm font-medium text-neutral-800 flex-1">${stepText}</p>
           `;
           instList.appendChild(li);
         });
+      } else {
+        const emptyLi = document.createElement('li');
+        emptyLi.className = "text-xs text-neutral-400 italic p-2";
+        emptyLi.innerText = "Nenhum passo a passo cadastrado.";
+        instList.appendChild(emptyLi);
       }
 
       btnEdit.onclick = () => {
@@ -1379,7 +1386,7 @@
         .join('\n');
 
       document.getElementById('edit-instructions').value = (recipe.instructions || [])
-        .map(ins => ins.instructionText || '')
+        .map(ins => ins.description || ins.instructionText || '')
         .join('\n');
 
       document.getElementById('modal-edit').classList.remove('hidden');

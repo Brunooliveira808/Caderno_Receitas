@@ -9,6 +9,9 @@ import ChefBot_Telegram.repository.AppUserRepository;
 import ChefBot_Telegram.repository.RecipeRepository;
 import ChefBot_Telegram.repository.UserFollowRepository;
 import ChefBot_Telegram.repository.UserRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -157,6 +160,7 @@ public class UserService {
      * Retorna true se agora está seguindo, false se deu unfollow.
      */
     @Transactional
+    @CacheEvict(value = "chefProfiles", allEntries = true)
     public boolean toggleFollow(AppUser follower, String targetUsername) {
         if (follower.getUsername().equalsIgnoreCase(targetUsername.trim())) {
             throw new IllegalArgumentException("Você não pode seguir a si mesmo.");
@@ -180,6 +184,10 @@ public class UserService {
      * Retorna o perfil público e métricas sociais de um chef.
      */
     @Transactional(readOnly = true)
+    @Cacheable(
+        value = "chefProfiles",
+        key = "(#currentUser != null ? #currentUser.username : 'anon') + ':' + #username.trim().toLowerCase()"
+    )
     public UserProfileDTO getChefProfile(AppUser currentUser, String username) {
         AppUser target = appUserRepository.findByUsernameIgnoreCase(username.trim())
                 .orElseThrow(() -> new IllegalArgumentException("Chef não encontrado com username: " + username));

@@ -12,6 +12,9 @@ import ChefBot_Telegram.repository.UserRepository;
 import ChefBot_Telegram.util.TelegramHtmlUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -78,6 +81,10 @@ public class RecipeService {
      * Possui proteção contra duplicação acidental recente (idempotência nos últimos 30 segundos).
      */
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "exploreRecipes", allEntries = true),
+        @CacheEvict(value = "chefProfiles", allEntries = true)
+    })
     public Recipe saveRecipeFromDTO(Long telegramChatId, String userName, RecipeResponseDTO dto, String rawTranscript) {
         User user = userRepository.findByTelegramChatId(telegramChatId)
             .orElseGet(() -> {
@@ -483,10 +490,14 @@ public class RecipeService {
     }
 
     /**
-     * Retorna todas as receitas salvas no sistema.
+     * Retorna o feed público de receitas para a aba Explorar com cache em memória.
      */
-    public List<Recipe> findAllRecipes() {
-        return recipeRepository.findAll();
+    @Cacheable(value = "exploreRecipes", key = "#query != null ? #query.trim().toLowerCase() : 'all'")
+    public List<Recipe> getPublicRecipes(String query) {
+        if (query != null && !query.isBlank()) {
+            return recipeRepository.searchPublicRecipes(query.trim());
+        }
+        return recipeRepository.findAllPublicRecipes();
     }
 
     /**
@@ -500,6 +511,10 @@ public class RecipeService {
      * Deleta receita por ID diretamente (para a Web).
      */
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "exploreRecipes", allEntries = true),
+        @CacheEvict(value = "chefProfiles", allEntries = true)
+    })
     public boolean deleteRecipeById(Long id) {
         if (recipeRepository.existsById(id)) {
             recipeRepository.deleteById(id);
@@ -512,6 +527,10 @@ public class RecipeService {
      * Atualiza uma receita com dados manuais vindos da Web.
      */
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "exploreRecipes", allEntries = true),
+        @CacheEvict(value = "chefProfiles", allEntries = true)
+    })
     public Recipe updateRecipeManual(Long id, ChefBot_Telegram.dto.RecipeUpdateRequestDTO dto) {
         Recipe recipe = recipeRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Receita não encontrada com ID: " + id));
@@ -574,6 +593,10 @@ public class RecipeService {
      * Somente o proprietário da receita pode alternar.
      */
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "exploreRecipes", allEntries = true),
+        @CacheEvict(value = "chefProfiles", allEntries = true)
+    })
     public Recipe toggleVisibility(Long telegramChatId, Long recipeId) {
         Recipe recipe = recipeRepository.findByUserTelegramChatIdAndId(telegramChatId, recipeId)
             .orElseThrow(() -> new IllegalArgumentException("Receita não encontrada para este usuário."));
@@ -587,6 +610,10 @@ public class RecipeService {
      * Incrementa o contador forkCount da receita original e define forkedFromUsername.
      */
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "exploreRecipes", allEntries = true),
+        @CacheEvict(value = "chefProfiles", allEntries = true)
+    })
     public Recipe forkRecipe(User targetUser, Long sourceRecipeId) {
         Recipe sourceRecipe = recipeRepository.findById(sourceRecipeId)
             .orElseThrow(() -> new IllegalArgumentException("Receita não encontrada com ID: " + sourceRecipeId));

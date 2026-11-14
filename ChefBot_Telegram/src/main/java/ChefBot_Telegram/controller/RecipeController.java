@@ -60,9 +60,7 @@ public class RecipeController {
      */
     @GetMapping("/explore")
     public List<RecipeWebDTO> exploreRecipes(@RequestParam(required = false) String query) {
-        List<Recipe> recipes = (query != null && !query.isBlank())
-                ? recipeRepository.searchPublicRecipes(query.trim())
-                : recipeRepository.findAllPublicRecipes();
+        List<Recipe> recipes = recipeService.getPublicRecipes(query);
 
         return recipes.stream()
                 .map(this::toDTO)

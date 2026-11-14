@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ChefBot Culinário</title>
 
   <!-- PWA Meta Tags -->
@@ -40,7 +40,7 @@
   <style>
     /* Estilos mobile e toques refinados */
     html, body {
-      background-color: #ffffff;
+      background-color: #fafafa;
       -webkit-tap-highlight-color: transparent;
       min-height: 100%;
     }
@@ -59,55 +59,129 @@
       70% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
       100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom, 16px);
+    }
   </style>
 </head>
-<body class="text-neutral-800 antialiased font-sans select-none bg-white">
+<body class="text-neutral-800 antialiased font-sans select-none bg-neutral-100">
 
   <!-- APP CONTAINER (Mobile Frame Centralizado em telas grandes) -->
   <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative pb-24">
 
     <!-- HEADER / TOPO -->
-    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-amber-100 px-5 pt-5 pb-3">
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-neutral-100 px-5 pt-4 pb-3">
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-300 flex items-center justify-center shadow-md shadow-amber-200">
-            <i data-lucide="utensils" class="w-6 h-6 text-amber-950"></i>
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-300 flex items-center justify-center shadow-md shadow-amber-200">
+            <i data-lucide="utensils" class="w-5 h-5 text-amber-950"></i>
           </div>
           <div>
-            <h1 class="text-xl font-black tracking-tight text-neutral-900 flex items-center gap-1.5">
-              ChefBot <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+            <h1 id="app-header-title" class="text-lg font-black tracking-tight text-neutral-900 flex items-center gap-1.5">
+              Minhas Receitas <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
             </h1>
-            <p class="text-xs text-neutral-500 font-medium">Caderno Inteligente de Receitas</p>
+            <p id="app-header-subtitle" class="text-[11px] text-neutral-500 font-medium">Seu acervo culinário pessoal</p>
           </div>
         </div>
 
         <div class="flex items-center gap-1">
           <!-- Botão de Atualizar -->
-          <button onclick="fetchRecipes()" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600 transition" title="Atualizar">
+          <button onclick="refreshActiveTab()" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600 transition" title="Atualizar">
             <i data-lucide="refresh-cw" class="w-5 h-5"></i>
           </button>
           <!-- Botão de Instalar App PWA -->
-          <button id="btn-install-pwa" onclick="installPWA()" class="hidden px-2.5 py-1.5 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="Instalar aplicativo">
+          <button id="btn-install-pwa" onclick="installPWA()" class="hidden px-2 py-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition flex items-center gap-1 shadow-sm" title="Instalar aplicativo">
             <i data-lucide="download" class="w-3.5 h-3.5"></i>
             <span>Instalar</span>
           </button>
-          <!-- Botão de Usuário / Login (extrema direita) -->
-          <button id="btn-user-profile" onclick="openAuthModal()" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600 transition relative" title="Perfil / Entrar">
-            <i data-lucide="user" class="w-5 h-5"></i>
-            <span id="auth-status-dot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white"></span>
-          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ========================================== -->
+    <!-- ABA 1: EXPLORAR (Esquerda)                 -->
+    <!-- ========================================== -->
+    <section id="tab-explore" class="hidden flex-1 p-4 flex-col">
+      <!-- Barra de Busca do Explorar -->
+      <div class="relative mb-3">
+        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
+          <i data-lucide="search" class="w-4 h-4"></i>
+        </div>
+        <input 
+          id="explore-search-input" 
+          type="text" 
+          placeholder="Buscar receitas públicas ou @chefs..." 
+          oninput="handleExploreSearch(this.value)"
+          class="w-full pl-10 pr-9 py-2.5 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white rounded-2xl text-sm text-neutral-800 placeholder-neutral-400 border border-transparent focus:border-amber-400 focus:outline-none transition shadow-inner"
+        />
+        <button 
+          id="btn-clear-explore-search" 
+          onclick="clearExploreSearch()" 
+          class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-400 hover:text-neutral-600 transition">
+          <i data-lucide="x-circle" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Seção de Chefs Encontrados (quando busca) -->
+      <div id="explore-chefs-section" class="hidden mb-4">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2 flex items-center gap-1.5">
+          <i data-lucide="users" class="w-3.5 h-3.5"></i> Chefs na Comunidade
+        </h3>
+        <div id="explore-chefs-list" class="flex gap-2 overflow-x-auto hide-scrollbar py-1">
+          <!-- Chips de chefs encontrados -->
         </div>
       </div>
 
-      <!-- BARRA DE PESQUISA -->
-      <div class="mt-3 relative">
+      <!-- Feed de Receitas Públicas -->
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+          <i data-lucide="compass" class="w-3.5 h-3.5 text-amber-500"></i> Feed da Comunidade
+        </h3>
+        <span id="explore-count" class="text-[11px] text-neutral-400 font-medium"></span>
+      </div>
+
+      <div id="explore-loading" class="hidden flex flex-col items-center justify-center py-12 gap-3 text-neutral-400">
+        <div class="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-xs font-medium">Explorando criações culinárias...</p>
+      </div>
+
+      <div id="explore-empty-state" class="hidden flex flex-col items-center justify-center py-16 px-6 text-center">
+        <div class="w-14 h-14 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mb-3">
+          <i data-lucide="sparkles" class="w-7 h-7"></i>
+        </div>
+        <h3 class="font-bold text-neutral-800 text-sm">Nenhuma receita encontrada</h3>
+        <p class="text-xs text-neutral-500 mt-1 max-w-xs">Seja o primeiro da comunidade a compartilhar pratos incríveis!</p>
+      </div>
+
+      <div id="explore-recipe-list" class="flex flex-col gap-3">
+        <!-- Cards públicos inseridos dinamicamente -->
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- ABA 2: MINHAS RECEITAS (Centro)            -->
+    <!-- ========================================== -->
+    <section id="tab-my-recipes" class="flex-1 p-4 flex flex-col">
+      <!-- BOTÃO NOVO: [➕ Adicionar Receita] (Exclusivo desta aba, acima do caderno) -->
+      <div class="mb-3">
+        <button onclick="openAddModal()" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-amber-950 font-bold py-3 px-4 rounded-2xl shadow-md shadow-amber-200/50 flex items-center justify-center gap-2.5 transition transform active:scale-[0.98]">
+          <div class="w-6 h-6 rounded-full bg-white flex items-center justify-center text-amber-600 shadow-sm">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+          </div>
+          <span>Adicionar Receita</span>
+          <span class="text-[11px] px-2 py-0.5 rounded-full bg-red-500 text-white font-medium ml-1">Áudio ou Texto</span>
+        </button>
+      </div>
+
+      <!-- BARRA DE PESQUISA PESSOAL -->
+      <div class="relative mb-2">
         <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
           <i data-lucide="search" class="w-4 h-4"></i>
         </div>
         <input 
           id="search-input" 
           type="text" 
-          placeholder="Buscar prato, ingrediente..." 
+          placeholder="Buscar no meu caderno..." 
           oninput="handleSearchInput(this.value)"
           class="w-full pl-10 pr-9 py-2 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white rounded-2xl text-sm text-neutral-800 placeholder-neutral-400 border border-transparent focus:border-amber-400 focus:outline-none transition shadow-inner"
         />
@@ -121,42 +195,40 @@
       </div>
 
       <!-- FILTROS POR CATEGORIA -->
-      <div id="category-container" class="mt-4 flex gap-2 overflow-x-auto hide-scrollbar py-1 text-sm font-medium">
-        <button onclick="setFilter('Todos')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-amber-400 text-amber-950 shadow-sm font-semibold" data-category="Todos">
+      <div id="category-container" class="mb-3 flex gap-2 overflow-x-auto hide-scrollbar py-1 text-xs font-medium">
+        <button onclick="setFilter('Todos')" class="category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-amber-400 text-amber-950 shadow-sm font-semibold" data-category="Todos">
           Todos
         </button>
-        <button onclick="setFilter('café da manhã')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="café da manhã">
+        <button onclick="setFilter('café da manhã')" class="category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="café da manhã">
           Café da manhã
         </button>
-        <button onclick="setFilter('almoço')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="almoço">
+        <button onclick="setFilter('almoço')" class="category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="almoço">
           Almoço
         </button>
-        <button onclick="setFilter('lanche')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="lanche">
+        <button onclick="setFilter('lanche')" class="category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="lanche">
           Lanche
         </button>
-        <button onclick="setFilter('jantar')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="jantar">
+        <button onclick="setFilter('jantar')" class="category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="jantar">
           Jantar
         </button>
-        <button onclick="setFilter('ceia')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="ceia">
+        <button onclick="setFilter('ceia')" class="category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="ceia">
           Ceia
         </button>
-        <button onclick="setFilter('sobremesa')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="sobremesa">
+        <button onclick="setFilter('sobremesa')" class="category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="sobremesa">
           Sobremesa
         </button>
-        <button onclick="setFilter('bebida')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="bebida">
+        <button onclick="setFilter('bebida')" class="category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="bebida">
           Bebidas
         </button>
-        <button onclick="setFilter('petisco')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="petisco">
+        <button onclick="setFilter('petisco')" class="category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="petisco">
           Petiscos
         </button>
-        <button onclick="setFilter('molho')" class="category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="molho">
+        <button onclick="setFilter('molho')" class="category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100" data-category="molho">
           Molhos
         </button>
       </div>
-    </header>
 
-    <!-- CONTEÚDO PRINCIPAL / LISTA DE RECEITAS -->
-    <main class="flex-1 p-4">
+      <!-- LISTA DE RECEITAS PESSOAIS -->
       <div id="loading" class="hidden flex flex-col items-center justify-center py-16 gap-3 text-neutral-400">
         <div class="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
         <p class="text-sm font-medium">Buscando delícias...</p>
@@ -167,26 +239,114 @@
           <i data-lucide="cooking-pot" class="w-8 h-8"></i>
         </div>
         <h3 class="font-bold text-neutral-800 text-base">Nenhuma receita nesta categoria</h3>
-        <p class="text-xs text-neutral-500 mt-1 max-w-xs">Adicione uma receita falando no microfone ou escrevendo no botão abaixo!</p>
+        <p class="text-xs text-neutral-500 mt-1 max-w-xs">Adicione uma receita clicando no botão acima ou fale pelo microfone!</p>
       </div>
 
       <div id="recipe-list" class="flex flex-col gap-3">
         <!-- Cards inseridos dinamicamente -->
       </div>
-    </main>
+    </section>
 
-    <!-- BARRA INFERIOR FLUTUANTE: BOTÃO ADICIONAR -->
-    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-sm border-t border-amber-100 p-4 flex justify-center z-20">
-      <button onclick="openAddModal()" class="bg-amber-400 hover:bg-amber-500 text-amber-950 px-6 py-3.5 rounded-full font-bold shadow-lg shadow-amber-300/60 flex items-center gap-2.5 transition transform active:scale-95 border-2 border-white">
-        <div class="w-6 h-6 rounded-full bg-white flex items-center justify-center text-amber-600 shadow-sm">
-          <i data-lucide="plus" class="w-4 h-4"></i>
+    <!-- ========================================== -->
+    <!-- ABA 3: MEU PERFIL (Direita)                -->
+    <!-- ========================================== -->
+    <section id="tab-profile" class="hidden flex-1 p-5 flex flex-col">
+      <!-- Seção Usuário Logado -->
+      <div id="profile-logged-view" class="hidden flex flex-col gap-5">
+        <div class="flex items-center gap-4">
+          <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-400 to-amber-200 flex items-center justify-center text-amber-950 font-black text-2xl shadow-md shadow-amber-200">
+            <span id="profile-avatar-initial">C</span>
+          </div>
+          <div>
+            <h2 id="profile-name" class="text-lg font-black text-neutral-900 leading-tight">Chef</h2>
+            <p id="profile-username" class="text-sm font-semibold text-amber-700">@usuario</p>
+            <p id="profile-email" class="text-xs text-neutral-400 mt-0.5">email@exemplo.com</p>
+          </div>
         </div>
-        <span>Nova Receita</span>
-        <span class="text-xs px-2 py-0.5 rounded-full bg-red-500 text-white font-medium ml-1">Áudio / Texto</span>
+
+        <!-- Estatísticas Sociais Estilo Instagram -->
+        <div class="grid grid-cols-3 gap-2 bg-neutral-50 border border-neutral-100 rounded-2xl p-3 text-center">
+          <div class="flex flex-col">
+            <span id="stat-recipes-count" class="font-black text-lg text-neutral-900">0</span>
+            <span class="text-[11px] text-neutral-500 font-medium">Receitas</span>
+          </div>
+          <div class="flex flex-col border-x border-neutral-200/60">
+            <span id="stat-followers-count" class="font-black text-lg text-neutral-900">0</span>
+            <span class="text-[11px] text-neutral-500 font-medium">Seguidores</span>
+          </div>
+          <div class="flex flex-col">
+            <span id="stat-following-count" class="font-black text-lg text-neutral-900">0</span>
+            <span class="text-[11px] text-neutral-500 font-medium">Seguindo</span>
+          </div>
+        </div>
+
+        <!-- Cartão de Ações / Status -->
+        <div class="bg-amber-50/70 border border-amber-100 p-4 rounded-2xl flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-amber-900">Status da Conta:</span>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Conectado
+            </span>
+          </div>
+          <p class="text-xs text-neutral-600 leading-relaxed">
+            Compartilhe receitas com a comunidade definindo suas receitas como públicas no seu caderno pessoal.
+          </p>
+        </div>
+
+        <!-- Botão de Sair -->
+        <button onclick="handleLogout()" class="w-full py-3.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-2xl transition flex items-center justify-center gap-2 mt-auto">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+          Sair da Conta
+        </button>
+      </div>
+
+      <!-- Seção Usuário Deslogado (Aviso para entrar) -->
+      <div id="profile-guest-view" class="flex flex-col items-center justify-center py-16 px-4 text-center">
+        <div class="w-16 h-16 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
+          <i data-lucide="user-check" class="w-8 h-8"></i>
+        </div>
+        <h3 class="font-black text-lg text-neutral-900">Acesse sua conta ChefBot</h3>
+        <p class="text-xs text-neutral-500 mt-1 max-w-xs mb-6">
+          Entre ou cadastre-se para salvar receitas na nuvem, seguir outros chefs e compartilhar suas criações culinárias.
+        </p>
+        <button onclick="openAuthModal()" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+          <i data-lucide="log-in" class="w-4 h-4"></i>
+          Entrar ou Criar Conta
+        </button>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- BARRA FIXA INFERIOR (BOTTOM NAVIGATION BAR ESTILO INSTAGRAM)    -->
+    <!-- ============================================================== -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-neutral-200/80 px-6 py-2.5 flex items-center justify-between z-40 safe-bottom shadow-lg">
+      
+      <!-- 1. Explorar (Esquerda) -->
+      <button onclick="switchTab('explore')" id="nav-btn-explore" class="nav-tab flex flex-col items-center gap-1 text-neutral-400 hover:text-amber-600 transition flex-1">
+        <i data-lucide="compass" class="w-6 h-6"></i>
+        <span class="text-[10px] font-bold">Explorar</span>
       </button>
+
+      <!-- 2. Minhas Receitas (Centro) -->
+      <button onclick="switchTab('my-recipes')" id="nav-btn-my-recipes" class="nav-tab flex flex-col items-center gap-1 text-amber-600 transition flex-1 font-bold">
+        <div class="relative">
+          <i data-lucide="book-open" class="w-6 h-6"></i>
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500 absolute -top-0.5 -right-0.5"></span>
+        </div>
+        <span class="text-[10px] font-bold">Minhas Receitas</span>
+      </button>
+
+      <!-- 3. Meu Perfil (Direita) -->
+      <button onclick="switchTab('profile')" id="nav-btn-profile" class="nav-tab flex flex-col items-center gap-1 text-neutral-400 hover:text-amber-600 transition flex-1">
+        <i data-lucide="user" class="w-6 h-6"></i>
+        <span class="text-[10px] font-bold">Meu Perfil</span>
+      </button>
+
     </nav>
 
-    <!-- ================= MODAIS ================= -->
+    <!-- ========================================== -->
+    <!-- MODAIS E COMPONENTES AUXILIARES            -->
+    <!-- ========================================== -->
 
     <!-- MODAL 1: DETALHES DA RECEITA (Bottom Sheet) -->
     <div id="modal-details" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex flex-col justify-end transition-opacity">
@@ -198,8 +358,14 @@
         <!-- Cabeçalho do Detalhe -->
         <div class="flex items-start justify-between gap-3">
           <div>
-            <span id="detail-category-badge" class="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200"></span>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span id="detail-category-badge" class="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200"></span>
+              <span id="detail-visibility-badge" class="px-2 py-0.5 rounded-md text-xs font-bold bg-neutral-100 text-neutral-600"></span>
+            </div>
             <h2 id="detail-title" class="text-2xl font-black text-neutral-900 mt-2 leading-tight"></h2>
+            
+            <p id="detail-fork-info" class="hidden text-xs text-amber-700 font-medium mt-1 flex items-center gap-1"></p>
+
             <div class="flex items-center gap-4 text-xs text-neutral-500 mt-2">
               <span id="detail-time" class="flex items-center gap-1"></span>
               <span id="detail-portions" class="flex items-center gap-1"></span>
@@ -211,7 +377,10 @@
           </button>
         </div>
 
-        <hr class="my-5 border-neutral-100">
+        <!-- Chips de Tags -->
+        <div id="detail-tags-container" class="flex flex-wrap gap-1.5 mt-3"></div>
+
+        <hr class="my-4 border-neutral-100">
 
         <!-- Ingredientes -->
         <div>
@@ -224,7 +393,7 @@
           </ul>
         </div>
 
-        <hr class="my-5 border-neutral-100">
+        <hr class="my-4 border-neutral-100">
 
         <!-- Modo de Preparo -->
         <div>
@@ -237,7 +406,14 @@
           </ol>
         </div>
 
-        <div class="mt-8 pt-4 border-t border-neutral-100 flex gap-3">
+        <!-- Ações do Modal -->
+        <div class="mt-8 pt-4 border-t border-neutral-100 flex gap-2">
+          <!-- Botão Puxar (aparece no Explorar) -->
+          <button id="btn-fork-detail" onclick="forkSelectedRecipe()" class="hidden flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl flex items-center justify-center gap-2 shadow-sm transition">
+            <i data-lucide="download" class="w-4 h-4"></i> Puxar para Minhas Receitas
+          </button>
+
+          <!-- Botões do dono (Minhas Receitas) -->
           <button id="btn-edit-detail" class="flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl flex items-center justify-center gap-2 shadow-sm transition">
             <i data-lucide="pencil" class="w-4 h-4"></i> Editar
           </button>
@@ -248,129 +424,85 @@
       </div>
     </div>
 
-    <!-- MODAL 2: ADICIONAR NOVA RECEITA (ÁUDIO OU TEXTO) -->
-    <div id="modal-add" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex flex-col justify-end">
-      <div class="bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto w-full p-6 relative shadow-2xl animate-slide-up">
+    <!-- MODAL 2: ADICIONAR RECEITA (Áudio ou Texto com IA) -->
+    <div id="modal-add" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex flex-col justify-end transition-opacity">
+      <div class="bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto w-full p-6 relative shadow-2xl flex flex-col">
         
-        <div class="w-12 h-1.5 bg-neutral-200 rounded-full mx-auto mb-4" onclick="closeAddModal()"></div>
+        <div class="w-12 h-1.5 bg-neutral-200 rounded-full mx-auto mb-4 cursor-pointer" onclick="closeAddModal()"></div>
 
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-black text-neutral-900 flex items-center gap-2">
-            Adicionar Receita
+            <i data-lucide="sparkles" class="w-5 h-5 text-amber-500"></i>
+            Adicionar ao Caderno
           </h2>
-          <button onclick="closeAddModal()" class="p-2 text-neutral-400 hover:text-neutral-700">
+          <button onclick="closeAddModal()" class="p-2 text-neutral-400 hover:text-neutral-700 rounded-full hover:bg-neutral-100">
             <i data-lucide="x" class="w-6 h-6"></i>
           </button>
         </div>
 
-        <!-- Abas de Opção: Gravar Áudio ou Digitar -->
-        <div class="flex p-1 bg-neutral-100 rounded-2xl mb-5">
-          <button id="tab-audio-btn" onclick="switchAddTab('audio')" class="flex-1 py-2 text-xs font-bold rounded-xl transition bg-white text-neutral-900 shadow-sm flex items-center justify-center gap-1.5">
-            <i data-lucide="mic" class="w-4 h-4 text-red-500"></i> Por Voz (Áudio)
+        <!-- Seletor de Modo: Áudio vs Texto -->
+        <div class="flex bg-neutral-100 p-1 rounded-2xl mb-5">
+          <button id="tab-btn-audio" onclick="setAddMode('audio')" class="flex-1 py-2 rounded-xl text-xs font-bold transition bg-white text-neutral-900 shadow-sm flex items-center justify-center gap-1.5">
+            <i data-lucide="mic" class="w-4 h-4 text-red-500"></i> Gravar Áudio
           </button>
-          <button id="tab-text-btn" onclick="switchAddTab('text')" class="flex-1 py-2 text-xs font-bold rounded-xl transition text-neutral-500 hover:text-neutral-900 flex items-center justify-center gap-1.5">
-            <i data-lucide="pen-line" class="w-4 h-4"></i> Digitar Texto
+          <button id="tab-btn-text" onclick="setAddMode('text')" class="flex-1 py-2 rounded-xl text-xs font-bold transition text-neutral-500 hover:text-neutral-800 flex items-center justify-center gap-1.5">
+            <i data-lucide="type" class="w-4 h-4"></i> Digitar Texto
           </button>
         </div>
 
-        <!-- CONTEÚDO ABA: ÁUDIO -->
-        <div id="tab-audio-content" class="flex flex-col items-center text-center py-4">
-          <p class="text-xs text-neutral-500 mb-6 max-w-xs">
-            Fale a receita com naturalidade (ingredientes, modo de fazer). A IA do ChefBot estruturará tudo automaticamente!
-          </p>
-
-          <!-- Botão Microfone Circular Grande -->
-          <div class="relative mb-4">
-            <button id="record-btn" onclick="toggleRecording()" class="w-24 h-24 rounded-full bg-gradient-to-tr from-amber-400 to-amber-300 text-amber-950 flex flex-col items-center justify-center shadow-xl shadow-amber-200/80 active:scale-95 transition">
-              <i id="record-icon" data-lucide="mic" class="w-8 h-8 text-neutral-900"></i>
-              <span id="record-status-label" class="text-[10px] font-bold uppercase mt-1">Gravar</span>
+        <!-- MODO ÁUDIO -->
+        <div id="add-mode-audio" class="flex flex-col items-center py-6 gap-4">
+          <div class="relative">
+            <button id="btn-record-audio" onclick="toggleAudioRecording()" class="w-24 h-24 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg shadow-red-200 transition transform active:scale-95">
+              <i id="mic-icon" data-lucide="mic" class="w-10 h-10"></i>
             </button>
           </div>
-
-          <div id="recording-timer" class="text-sm font-semibold text-neutral-500 mb-2 hidden">00:00</div>
-          
-          <div id="audio-preview-container" class="hidden w-full flex flex-col items-center gap-3">
-            <audio id="audio-preview" controls class="w-full h-10 rounded-lg"></audio>
-            <button onclick="submitAudioRecipe()" id="btn-send-audio" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+          <p id="record-status" class="text-xs font-medium text-neutral-500 text-center">Toque no microfone e fale os ingredientes e o modo de preparo!</p>
+          <div id="audio-preview-container" class="hidden w-full flex flex-col gap-2 mt-2">
+            <audio id="audio-preview" controls class="w-full"></audio>
+            <button id="btn-send-audio" onclick="sendAudioRecipe()" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl shadow-md transition flex items-center justify-center gap-2">
               <i data-lucide="sparkles" class="w-5 h-5 text-red-600"></i> Extrair Receita com IA
             </button>
           </div>
-
-          <!-- Divisor Ou Enviar Arquivo de Áudio -->
-          <div class="mt-4 pt-3 border-t border-neutral-100 w-full flex flex-col items-center">
-            <label for="audio-file-input" class="cursor-pointer text-xs font-semibold text-amber-800 hover:text-amber-950 flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 transition">
-              <i data-lucide="upload" class="w-3.5 h-3.5 text-amber-600"></i> Ou selecione um áudio do celular / WhatsApp
-            </label>
-            <input type="file" id="audio-file-input" accept="audio/*" class="hidden" onchange="handleAudioFileUpload(event)">
-            <p id="audio-file-name" class="text-[11px] text-neutral-400 mt-1 hidden"></p>
-          </div>
         </div>
 
-        <!-- CONTEÚDO ABA: TEXTO -->
-        <div id="tab-text-content" class="hidden flex flex-col gap-4">
-          <p class="text-xs text-neutral-500">
-            Cole uma mensagem do WhatsApp, ou escreva os ingredientes e o modo de preparo:
-          </p>
-          <textarea id="recipe-text-input" rows="6" placeholder="Ex: Bolo de milho da vó: 1 lata de milho verde, 1 lata de açúcar, 3 ovos... bata tudo no liquidificador e asse a 180 graus por 40 min." class="w-full p-4 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200/50 resize-none"></textarea>
-
-          <button onclick="submitTextRecipe()" id="btn-send-text" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+        <!-- MODO TEXTO -->
+        <div id="add-mode-text" class="hidden flex flex-col gap-4">
+          <textarea 
+            id="text-recipe-input" 
+            rows="6" 
+            placeholder="Cole ou digite a receita completa aqui (ex: 'Bolo de banana: use 3 bananas, 2 ovos, misture tudo e asse a 180°C por 30min')..."
+            class="w-full p-4 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-amber-400 resize-none font-sans"
+          ></textarea>
+          <button id="btn-send-text" onclick="sendTextRecipe()" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl shadow-md transition flex items-center justify-center gap-2">
             <i data-lucide="sparkles" class="w-5 h-5 text-red-600"></i> Extrair e Salvar com IA
           </button>
         </div>
 
-        <!-- Indicador de Processamento IA -->
-        <div id="ai-processing" class="hidden mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-3">
-          <div class="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-          <p class="text-xs font-semibold text-amber-900">O ChefBot está analisando a receita...</p>
+        <!-- Loading de Processamento IA -->
+        <div id="ai-processing" class="hidden flex flex-col items-center justify-center py-6 gap-3">
+          <div class="w-9 h-9 border-3 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-xs font-bold text-neutral-700">A Inteligência Artificial está estruturando sua receita...</p>
         </div>
-
       </div>
     </div>
 
     <!-- MODAL 3: EDITAR RECEITA -->
-    <div id="modal-edit" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex flex-col justify-end">
-      <div class="bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto w-full p-6 relative shadow-2xl animate-slide-up">
-        
-        <div class="w-12 h-1.5 bg-neutral-200 rounded-full mx-auto mb-4" onclick="closeEditModal()"></div>
-
-        <div class="flex items-center justify-between mb-3">
+    <div id="modal-edit" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex flex-col justify-end transition-opacity">
+      <div class="bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto w-full p-6 relative shadow-2xl flex flex-col">
+        <div class="w-12 h-1.5 bg-neutral-200 rounded-full mx-auto mb-4 cursor-pointer" onclick="closeEditModal()"></div>
+        <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-black text-neutral-900">Editar Receita</h2>
-          <button onclick="closeEditModal()" class="p-2 text-neutral-400 hover:text-neutral-700">
+          <button onclick="closeEditModal()" class="p-2 text-neutral-400 hover:text-neutral-700 rounded-full hover:bg-neutral-100">
             <i data-lucide="x" class="w-6 h-6"></i>
           </button>
         </div>
 
-        <!-- Seção 1: Edição Inteligente com IA -->
-        <div class="mb-5 p-3.5 bg-gradient-to-tr from-amber-50 to-orange-50 border border-amber-200 rounded-2xl">
-          <div class="flex items-center gap-1.5 text-xs font-bold text-amber-900 mb-1.5">
-            <i data-lucide="sparkles" class="w-4 h-4 text-amber-600"></i>
-            Pedir alteração para a IA
-          </div>
-          <p class="text-[11px] text-neutral-600 mb-2 leading-relaxed">
-            Diga o que mudar (ex: "troque açúcar por 1 xícara de mel", "mude as porções para 6" ou "o tempo é 45 minutos").
-          </p>
-          <div class="flex gap-2">
-            <input type="text" id="ai-edit-prompt" placeholder="Ex: Adicione 1 colher de canela e troque leite por leite de aveia" class="flex-1 p-2.5 text-xs bg-white border border-amber-200 rounded-xl focus:outline-none focus:border-amber-400">
-            <button type="button" id="btn-apply-ai-edit" onclick="submitAiEditRecipe()" class="px-3 py-2 bg-amber-400 hover:bg-amber-500 text-amber-950 text-xs font-bold rounded-xl transition shadow-sm whitespace-nowrap flex items-center gap-1">
-              <i data-lucide="send" class="w-3.5 h-3.5"></i> Aplicar
-            </button>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2 my-3 text-xs text-neutral-400">
-          <div class="h-px bg-neutral-200 flex-1"></div>
-          <span>ou edite os campos manualmente</span>
-          <div class="h-px bg-neutral-200 flex-1"></div>
-        </div>
-
-        <form id="edit-form" onsubmit="saveEditedRecipe(event)" class="space-y-4 text-xs font-medium text-neutral-700">
-          <input type="hidden" id="edit-id">
-
+        <form id="edit-form" onsubmit="handleEditSubmit(event)" class="space-y-4 text-xs">
           <div>
             <label class="block font-bold mb-1 text-neutral-800">Título</label>
             <input type="text" id="edit-title" required class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
           </div>
-
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block font-bold mb-1 text-neutral-800">Categoria</label>
@@ -384,7 +516,6 @@
                 <option value="bebida">Bebida</option>
                 <option value="petisco">Petisco</option>
                 <option value="molho">Molho</option>
-                <option value="geral">Outros</option>
               </select>
             </div>
             <div>
@@ -392,94 +523,65 @@
               <input type="number" id="edit-prep-time" min="1" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
             </div>
           </div>
-
-          <div>
-            <label class="block font-bold mb-1 text-neutral-800">Porções / Rendimento</label>
-            <input type="number" id="edit-portions" min="1" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold mb-1 text-neutral-800">Porções</label>
+              <input type="number" id="edit-portions" min="1" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block font-bold mb-1 text-neutral-800">Visibilidade</label>
+              <select id="edit-visibility" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400 bg-white font-semibold">
+                <option value="true">🌐 Pública (Comunidade)</option>
+                <option value="false">🔒 Privada (Apenas Eu)</option>
+              </select>
+            </div>
           </div>
-
           <div>
             <label class="block font-bold mb-1 text-neutral-800">Ingredientes (um por linha)</label>
-            <textarea id="edit-ingredients" rows="5" placeholder="Ex: 2 xícaras de farinha&#10;1 colher de manteiga" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400 resize-none font-mono"></textarea>
+            <textarea id="edit-ingredients" rows="5" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400 resize-none font-mono"></textarea>
           </div>
-
           <div>
             <label class="block font-bold mb-1 text-neutral-800">Modo de Preparo (um passo por linha)</label>
-            <textarea id="edit-instructions" rows="6" placeholder="Ex: Misture a farinha e o fermento&#10;Asse por 30 minutos a 180°C" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400 resize-none font-mono"></textarea>
+            <textarea id="edit-instructions" rows="6" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400 resize-none font-mono"></textarea>
           </div>
-
           <button type="submit" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl shadow-md transition flex items-center justify-center gap-2">
             Salvar Alterações
           </button>
         </form>
-
       </div>
     </div>
 
     <!-- MODAL 4: LOGIN / REGISTRO / CONTA -->
     <div id="modal-auth" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
-      <div class="bg-white rounded-3xl w-full max-w-sm p-6 relative shadow-2xl animate-scale-up">
-        
+      <div class="bg-white rounded-3xl w-full max-w-sm p-6 relative shadow-2xl">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-2">
             <div class="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
               <i data-lucide="chef-hat" class="w-5 h-5"></i>
             </div>
-            <h3 id="auth-modal-title" class="font-black text-lg text-neutral-900">Minha Conta</h3>
+            <h3 id="auth-modal-title" class="font-black text-lg text-neutral-900">Entrar no ChefBot</h3>
           </div>
           <button onclick="closeAuthModal()" class="p-1.5 text-neutral-400 hover:text-neutral-700 rounded-full hover:bg-neutral-100">
             <i data-lucide="x" class="w-5 h-5"></i>
           </button>
         </div>
 
-        <!-- Visão 1: Usuário Logado -->
-        <div id="auth-view-logged" class="hidden flex flex-col gap-4">
-          <div class="bg-neutral-50 border border-neutral-200/70 p-4 rounded-2xl">
-            <p class="text-xs text-neutral-500 uppercase tracking-wider font-semibold">Conectado como</p>
-            <p id="logged-user-name" class="font-bold text-base text-neutral-900 mt-0.5"></p>
-            <p id="logged-user-email" class="text-xs text-neutral-500"></p>
-            
-            <div class="mt-3 pt-3 border-t border-neutral-200/60 flex items-center justify-between text-xs">
-              <span class="text-neutral-500">Telegram:</span>
-              <span id="logged-user-telegram" class="font-semibold text-neutral-800">Não vinculado</span>
-            </div>
-
-            <!-- Perfil Info -->
-            <div class="mt-3 pt-3 border-t border-neutral-200/60">
-              <div class="flex items-center justify-between text-xs text-neutral-700">
-                <span>Nome de Usuário:</span>
-                <span id="auth-current-username" class="font-bold text-amber-700">@usuario</span>
-              </div>
-            </div>
-          </div>
-
-          <button onclick="handleLogout()" class="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-2xl transition flex items-center justify-center gap-2">
-            <i data-lucide="log-out" class="w-4 h-4"></i>
-            Sair da Conta
-          </button>
-        </div>
-
-        <!-- Visão 2: Formulário de Login / Registro / Esqueci Senha -->
         <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="flex flex-col gap-3">
           <div id="auth-name-container" class="hidden">
             <label class="block text-xs font-bold mb-1 text-neutral-700">Seu Nome</label>
             <input type="text" id="auth-name" placeholder="Ex: Chef Bruno" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
           </div>
-
           <div id="auth-username-container" class="hidden">
-            <label class="block text-xs font-bold mb-1 text-neutral-700">@Nome de Usuário (Username)</label>
+            <label class="block text-xs font-bold mb-1 text-neutral-700">@Nome de Usuário</label>
             <div class="relative">
               <span class="absolute left-3 top-3 text-neutral-400 text-sm font-bold">@</span>
               <input type="text" id="auth-username" placeholder="brunochef" class="w-full p-3 pl-8 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
             </div>
-            <p class="text-[10px] text-neutral-400 mt-1">Seu identificador único na comunidade.</p>
           </div>
-
           <div id="auth-email-container">
             <label id="auth-email-label" class="block text-xs font-bold mb-1 text-neutral-700">E-mail ou @Username</label>
             <input type="text" id="auth-email" required placeholder="seu@email.com ou @username" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
           </div>
-
           <div id="auth-password-container">
             <div class="flex items-center justify-between mb-1">
               <label id="auth-password-label" class="block text-xs font-bold text-neutral-700">Senha</label>
@@ -489,49 +591,50 @@
             </div>
             <input type="password" id="auth-password" minlength="6" placeholder="Mínimo 6 caracteres" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
           </div>
-
           <div id="auth-confirm-password-container" class="hidden">
             <label class="block text-xs font-bold mb-1 text-neutral-700">Confirme sua Senha</label>
-            <input type="password" id="auth-confirm-password" minlength="6" placeholder="Repita a senha digitada" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+            <input type="password" id="auth-confirm-password" minlength="6" placeholder="Repita a senha" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
           </div>
-
           <div id="auth-reset-token-container" class="hidden">
             <label class="block text-xs font-bold mb-1 text-neutral-700">Código de Recuperação (Token)</label>
-            <input type="text" id="auth-reset-token" placeholder="Cole o código de 12 dígitos" class="w-full p-3 border border-neutral-200 rounded-xl text-sm uppercase font-mono focus:outline-none focus:border-amber-400">
+            <input type="text" id="auth-reset-token" placeholder="Cole o código" class="w-full p-3 border border-neutral-200 rounded-xl text-sm font-mono focus:outline-none focus:border-amber-400">
           </div>
 
-          <div id="auth-error-msg" class="hidden p-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-medium"></div>
-          <div id="auth-success-msg" class="hidden p-2.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-medium"></div>
+          <div id="auth-error-msg" class="hidden p-3 rounded-xl bg-red-50 text-red-600 text-xs font-medium border border-red-200"></div>
+          <div id="auth-success-msg" class="hidden p-3 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200"></div>
 
-          <button type="submit" id="btn-auth-submit" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl shadow-md transition flex items-center justify-center gap-2 mt-1">
-            <span>Entrar</span>
+          <button type="submit" id="auth-submit-btn" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl shadow-md transition mt-2">
+            Entrar
           </button>
-
-          <div class="text-center mt-2 flex flex-col gap-1.5">
-            <button type="button" onclick="toggleAuthMode()" id="btn-auth-toggle" class="text-xs text-amber-700 hover:text-amber-800 font-medium">
-              Não tem conta? Cadastre-se
-            </button>
-            <button type="button" onclick="setAuthMode('login')" id="btn-back-to-login" class="hidden text-xs text-neutral-500 hover:text-neutral-700 font-medium">
-              ← Voltar para o Login
-            </button>
-          </div>
         </form>
 
+        <div class="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between text-xs">
+          <button type="button" id="auth-toggle-mode-btn" onclick="toggleAuthMode()" class="text-amber-800 font-bold hover:underline">
+            Não tem uma conta? Cadastre-se
+          </button>
+          <button type="button" id="auth-back-to-login" onclick="setAuthMode('login')" class="hidden text-neutral-500 hover:underline">
+            Voltar ao Login
+          </button>
+        </div>
       </div>
     </div>
 
   </div>
 
-  <!-- SCRIPT DA APLICAÇÃO -->
+  <!-- JAVASCRIPT DA APLICAÇÃO -->
   <script>
+    let activeTab = 'my-recipes'; // 'explore', 'my-recipes', 'profile'
     let currentFilter = 'Todos';
     let searchQuery = '';
     let searchDebounceTimeout = null;
+    let exploreSearchQuery = '';
+    let exploreDebounceTimeout = null;
     let allRecipes = [];
+    let exploreRecipesList = [];
     let selectedRecipe = null;
     let deferredPrompt = null;
     let currentUser = null;
-    let authMode = 'login'; // 'login' ou 'register'
+    let authMode = 'login';
 
     // Helpers de Autenticação JWT
     function getAuthToken() {
@@ -555,51 +658,792 @@
       return headers;
     }
 
-    async function checkAuthSession() {
-      const token = getAuthToken();
-      const dot = document.getElementById('auth-status-dot');
-      if (!token) {
-        currentUser = null;
-        if (dot) dot.classList.add('hidden');
+    // 1. NAVEGAÇÃO ENTRE AS ABAS ESTILO INSTAGRAM
+    function switchTab(tab) {
+      activeTab = tab;
+      
+      const tabExplore = document.getElementById('tab-explore');
+      const tabMyRecipes = document.getElementById('tab-my-recipes');
+      const tabProfile = document.getElementById('tab-profile');
+      
+      const navBtnExplore = document.getElementById('nav-btn-explore');
+      const navBtnMyRecipes = document.getElementById('nav-btn-my-recipes');
+      const navBtnProfile = document.getElementById('nav-btn-profile');
+
+      const titleEl = document.getElementById('app-header-title');
+      const subtitleEl = document.getElementById('app-header-subtitle');
+
+      // Oculta todas
+      tabExplore.classList.add('hidden');
+      tabMyRecipes.classList.add('hidden');
+      tabProfile.classList.add('hidden');
+
+      // Reseta classes nos botões
+      [navBtnExplore, navBtnMyRecipes, navBtnProfile].forEach(btn => {
+        btn.className = "nav-tab flex flex-col items-center gap-1 text-neutral-400 hover:text-amber-600 transition flex-1";
+      });
+
+      if (tab === 'explore') {
+        tabExplore.classList.remove('hidden');
+        navBtnExplore.className = "nav-tab flex flex-col items-center gap-1 text-amber-600 transition flex-1 font-bold";
+        titleEl.innerHTML = `Explorar <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>`;
+        subtitleEl.innerText = "Descubra receitas e chefs da comunidade";
+        fetchExploreRecipes();
+      } else if (tab === 'my-recipes') {
+        tabMyRecipes.classList.remove('hidden');
+        navBtnMyRecipes.className = "nav-tab flex flex-col items-center gap-1 text-amber-600 transition flex-1 font-bold";
+        titleEl.innerHTML = `Minhas Receitas <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>`;
+        subtitleEl.innerText = "Seu acervo culinário pessoal";
+        fetchRecipes();
+      } else if (tab === 'profile') {
+        tabProfile.classList.remove('hidden');
+        navBtnProfile.className = "nav-tab flex flex-col items-center gap-1 text-amber-600 transition flex-1 font-bold";
+        titleEl.innerHTML = `Meu Perfil <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>`;
+        subtitleEl.innerText = "Sua conta e estatísticas culinárias";
+        loadUserProfile();
+      }
+
+      lucide.createIcons();
+    }
+
+    function refreshActiveTab() {
+      if (activeTab === 'explore') fetchExploreRecipes();
+      else if (activeTab === 'my-recipes') fetchRecipes();
+      else if (activeTab === 'profile') loadUserProfile();
+    }
+
+    // 2. ABA EXPLORAR: Feed público e busca
+    async function fetchExploreRecipes() {
+      const loading = document.getElementById('explore-loading');
+      const emptyState = document.getElementById('explore-empty-state');
+      const container = document.getElementById('explore-recipe-list');
+      const countEl = document.getElementById('explore-count');
+      
+      loading.classList.remove('hidden');
+      container.innerHTML = '';
+      emptyState.classList.add('hidden');
+
+      try {
+        const url = '/api/recipes/explore' + (exploreSearchQuery ? `?query=${encodeURIComponent(exploreSearchQuery)}` : '');
+        const res = await fetch(url, { headers: authHeaders() });
+        if (!res.ok) throw new Error('Falha ao carregar explorar');
+        exploreRecipesList = await res.json();
+        
+        loading.classList.add('hidden');
+        countEl.innerText = `${exploreRecipesList.length} receitas públicas`;
+
+        if (exploreRecipesList.length === 0) {
+          emptyState.classList.remove('hidden');
+          return;
+        }
+
+        exploreRecipesList.forEach(r => {
+          const card = document.createElement('div');
+          card.className = "bg-white border border-neutral-100 rounded-3xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between cursor-pointer border-l-4 border-l-amber-500";
+          card.onclick = (e) => {
+            if (!e.target.closest('.action-btn')) {
+              openDetailsModal(r, true);
+            }
+          };
+
+          const author = r.authorUsername ? `@${r.authorUsername}` : (r.sourceAuthor || 'Chef Anônimo');
+          const prepTime = r.prepTimeMinutes ? `${r.prepTimeMinutes} min` : 'Tempo livre';
+          const forkCount = r.forkCount || 0;
+
+          card.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900">
+                    ${r.category || 'Geral'}
+                  </span>
+                  <span class="text-xs text-amber-700 font-semibold flex items-center gap-0.5">
+                    <i data-lucide="user" class="w-3 h-3"></i> ${author}
+                  </span>
+                </div>
+                <h3 class="font-bold text-base text-neutral-900 leading-snug">${r.title || 'Receita sem título'}</h3>
+              </div>
+
+              <!-- Botão Puxar para Minhas Receitas -->
+              <div class="action-btn">
+                <button onclick="forkRecipe(${r.id})" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-200 shadow-sm" title="Puxar para meu caderno">
+                  <i data-lucide="download" class="w-3.5 h-3.5 text-amber-700"></i>
+                  <span>Puxar</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-4 flex items-center justify-between text-xs text-neutral-500 pt-2 border-t border-neutral-100">
+              <span class="flex items-center gap-1">
+                <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i>
+                ${prepTime}
+              </span>
+              <span class="flex items-center gap-1 text-amber-800 font-medium">
+                <i data-lucide="git-fork" class="w-3.5 h-3.5"></i>
+                ${forkCount} salvamentos
+              </span>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+
+      } catch (e) {
+        console.error(e);
+        loading.classList.add('hidden');
+      } finally {
+        lucide.createIcons();
+      }
+    }
+
+    function handleExploreSearch(val) {
+      clearTimeout(exploreDebounceTimeout);
+      const clearBtn = document.getElementById('btn-clear-explore-search');
+      if (val && val.trim().length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+
+      exploreDebounceTimeout = setTimeout(() => {
+        exploreSearchQuery = val.trim();
+        fetchExploreRecipes();
+        if (exploreSearchQuery) {
+          searchChefsSection(exploreSearchQuery);
+        } else {
+          document.getElementById('explore-chefs-section').classList.add('hidden');
+        }
+      }, 300);
+    }
+
+    function clearExploreSearch() {
+      document.getElementById('explore-search-input').value = '';
+      document.getElementById('btn-clear-explore-search').classList.add('hidden');
+      document.getElementById('explore-chefs-section').classList.add('hidden');
+      exploreSearchQuery = '';
+      fetchExploreRecipes();
+    }
+
+    async function searchChefsSection(query) {
+      try {
+        const res = await fetch(`/api/users/search?query=${encodeURIComponent(query)}`, { headers: authHeaders() });
+        if (!res.ok) return;
+        const chefs = await res.json();
+        const section = document.getElementById('explore-chefs-section');
+        const list = document.getElementById('explore-chefs-list');
+        list.innerHTML = '';
+
+        if (!chefs || chefs.length === 0) {
+          section.classList.add('hidden');
+          return;
+        }
+
+        section.classList.remove('hidden');
+        chefs.forEach(c => {
+          const chip = document.createElement('div');
+          chip.className = "flex items-center gap-2 bg-neutral-50 border border-neutral-200 px-3 py-1.5 rounded-2xl whitespace-nowrap text-xs shadow-sm";
+          chip.innerHTML = `
+            <div class="w-6 h-6 rounded-full bg-amber-400 text-amber-950 font-bold flex items-center justify-center text-[10px]">
+              ${c.name ? c.name.charAt(0).toUpperCase() : 'C'}
+            </div>
+            <div>
+              <span class="font-bold text-neutral-800">${c.name}</span>
+              <span class="text-[10px] text-amber-700 block">@${c.username}</span>
+            </div>
+            ${!c.isSelf ? `
+              <button onclick="toggleFollowChef('${c.username}')" class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${c.isFollowing ? 'bg-neutral-200 text-neutral-700' : 'bg-amber-400 text-amber-950'}">
+                ${c.isFollowing ? 'Seguindo' : 'Seguir'}
+              </button>
+            ` : ''}
+          `;
+          list.appendChild(chip);
+        });
+      } catch (e) {
+        console.warn('Erro ao buscar chefs:', e);
+      }
+    }
+
+    async function toggleFollowChef(username) {
+      if (!getAuthToken()) {
+        openAuthModal();
+        return;
+      }
+      try {
+        const res = await fetch(`/api/users/${username}/follow`, {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        if (res.ok) {
+          if (exploreSearchQuery) searchChefsSection(exploreSearchQuery);
+          if (activeTab === 'profile') loadUserProfile();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Erro ao seguir chef.');
+        }
+      } catch (e) {
+        alert('Erro ao se conectar ao servidor.');
+      }
+    }
+
+    // 3. CLONAR RECEITA (FORK)
+    async function forkRecipe(recipeId) {
+      if (!getAuthToken()) {
+        openAuthModal();
+        return;
+      }
+      try {
+        const res = await fetch(`/api/recipes/${recipeId}/fork`, {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        if (res.ok) {
+          alert('🎉 Receita puxada com sucesso para "Minhas Receitas"!');
+          if (activeTab === 'explore') fetchExploreRecipes();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Não foi possível puxar a receita.');
+        }
+      } catch (e) {
+        alert('Erro de conexão ao duplicar receita.');
+      }
+    }
+
+    function forkSelectedRecipe() {
+      if (selectedRecipe) {
+        forkRecipe(selectedRecipe.id);
+        closeDetailsModal();
+      }
+    }
+
+    // 4. ALTERNAR VISIBILIDADE (PÚBLICA / PRIVADA)
+    async function toggleRecipeVisibility(recipeId, event) {
+      if (event) event.stopPropagation();
+      try {
+        const res = await fetch(`/api/recipes/${recipeId}/visibility`, {
+          method: 'PATCH',
+          headers: authHeaders()
+        });
+        if (res.ok) {
+          fetchRecipes();
+        } else {
+          alert('Erro ao alterar visibilidade.');
+        }
+      } catch (e) {
+        alert('Erro ao se conectar ao servidor.');
+      }
+    }
+
+    // 5. ABA MINHAS RECEITAS (Caderno Pessoal)
+    async function fetchRecipes() {
+      showLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (currentFilter !== 'Todos') {
+          params.append('category', currentFilter);
+        }
+        if (searchQuery) {
+          params.append('q', searchQuery);
+        }
+
+        const url = '/api/recipes' + (params.toString() ? '?' + params.toString() : '');
+        const res = await fetch(url, { headers: authHeaders() });
+        if (res.status === 401 || res.status === 403) {
+          openAuthModal();
+          showLoading(false);
+          return;
+        }
+        if (!res.ok) throw new Error('Falha ao buscar receitas');
+        allRecipes = await res.json();
+        renderRecipes(allRecipes);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    function renderRecipes(recipes) {
+      const container = document.getElementById('recipe-list');
+      const emptyState = document.getElementById('empty-state');
+      const emptyTitle = emptyState.querySelector('h3');
+      const emptyDesc = emptyState.querySelector('p');
+      container.innerHTML = '';
+
+      if (!recipes || recipes.length === 0) {
+        if (searchQuery) {
+          emptyTitle.innerText = 'Nenhuma receita encontrada';
+          emptyDesc.innerText = `Não encontramos resultados para "${searchQuery}".`;
+        } else {
+          emptyTitle.innerText = currentFilter !== 'Todos' 
+            ? `Nenhuma receita em ${currentFilter}`
+            : 'Nenhuma receita no seu caderno';
+          emptyDesc.innerText = 'Adicione uma receita clicando no botão acima ou fale pelo microfone!';
+        }
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      recipes.forEach(r => {
+        const card = document.createElement('div');
+        card.className = "bg-white border border-amber-100 rounded-3xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between cursor-pointer border-l-4 border-l-amber-400";
+        card.onclick = (e) => {
+          if (!e.target.closest('.action-btn')) {
+            openDetailsModal(r, false);
+          }
+        };
+
+        const categoryTag = r.category ? r.category : 'Receita';
+        const prepTime = r.prepTimeMinutes ? `${r.prepTimeMinutes} min` : 'Tempo livre';
+        const isPub = (r.isPublic !== false);
+        const forkedNotice = r.forkedFromUsername ? `<span class="text-[10px] text-neutral-400 flex items-center gap-1"><i data-lucide="git-fork" class="w-3 h-3 text-amber-600"></i> Inspirada em @${r.forkedFromUsername}</span>` : '';
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900">
+                  ${categoryTag}
+                </span>
+                
+                <!-- Badge de Visibilidade Clicável -->
+                <button onclick="toggleRecipeVisibility(${r.id}, event)" class="action-btn px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 transition ${isPub ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-neutral-100 text-neutral-600 border border-neutral-200'}" title="Clique para alternar">
+                  <i data-lucide="${isPub ? 'globe' : 'lock'}" class="w-3 h-3"></i>
+                  ${isPub ? 'Pública' : 'Privada'}
+                </button>
+              </div>
+
+              <h3 class="font-bold text-base text-neutral-900 leading-snug">${r.title || 'Receita sem título'}</h3>
+              ${forkedNotice}
+            </div>
+            
+            <!-- Botões de Ação Rápida -->
+            <div class="flex items-center gap-1 action-btn">
+              <button onclick="openEditModal(${r.id})" class="p-2 text-neutral-400 hover:text-amber-600 rounded-xl hover:bg-amber-50 transition" title="Editar">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+              <button onclick="deleteRecipe(${r.id})" class="p-2 text-neutral-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition" title="Excluir">
+                <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-4 flex items-center justify-between text-xs text-neutral-500 pt-2 border-t border-neutral-100">
+            <span class="flex items-center gap-1">
+              <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i>
+              ${prepTime}
+            </span>
+            <span class="flex items-center gap-1">
+              <i data-lucide="shopping-basket" class="w-3.5 h-3.5 text-neutral-400"></i>
+              ${r.ingredients ? r.ingredients.length : 0} ingredientes
+            </span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    function setFilter(cat) {
+      currentFilter = cat;
+      document.querySelectorAll('.category-chip').forEach(chip => {
+        if (chip.getAttribute('data-category').toLowerCase() === cat.toLowerCase()) {
+          chip.className = 'category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-amber-400 text-amber-950 shadow-sm font-semibold';
+        } else {
+          chip.className = 'category-chip px-3.5 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100';
+        }
+      });
+      fetchRecipes();
+    }
+
+    function handleSearchInput(val) {
+      clearTimeout(searchDebounceTimeout);
+      const clearBtn = document.getElementById('btn-clear-search');
+      if (val && val.trim().length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+
+      searchDebounceTimeout = setTimeout(() => {
+        searchQuery = val.trim();
+        fetchRecipes();
+      }, 300);
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      searchQuery = '';
+      document.getElementById('btn-clear-search').classList.add('hidden');
+      fetchRecipes();
+    }
+
+    // 6. ABA PERFIL (Carregar dados do usuário)
+    async function loadUserProfile() {
+      const loggedView = document.getElementById('profile-logged-view');
+      const guestView = document.getElementById('profile-guest-view');
+
+      if (!getAuthToken()) {
+        loggedView.classList.add('hidden');
+        guestView.classList.remove('hidden');
         return;
       }
 
       try {
-        const res = await fetch('/api/auth/me', { headers: authHeaders() });
-        if (res.ok) {
-          currentUser = await res.json();
-          if (dot) dot.classList.remove('hidden');
-        } else {
-          setAuthToken(null);
-          currentUser = null;
-          if (dot) dot.classList.add('hidden');
+        const meRes = await fetch('/api/auth/me', { headers: authHeaders() });
+        if (!meRes.ok) {
+          loggedView.classList.add('hidden');
+          guestView.classList.remove('hidden');
+          return;
         }
+        currentUser = await meRes.json();
+
+        // Buscar estatísticas completas de seguidor e contagens
+        const profileRes = await fetch(`/api/users/${currentUser.username}`, { headers: authHeaders() });
+        const profileData = profileRes.ok ? await profileRes.json() : null;
+
+        document.getElementById('profile-avatar-initial').innerText = (currentUser.name || 'C').charAt(0).toUpperCase();
+        document.getElementById('profile-name').innerText = currentUser.name || 'Chef';
+        document.getElementById('profile-username').innerText = currentUser.username ? ('@' + currentUser.username) : '@chef';
+        document.getElementById('profile-email').innerText = currentUser.email || '';
+
+        if (profileData) {
+          document.getElementById('stat-recipes-count').innerText = profileData.recipesCount || 0;
+          document.getElementById('stat-followers-count').innerText = profileData.followersCount || 0;
+          document.getElementById('stat-following-count').innerText = profileData.followingCount || 0;
+        }
+
+        guestView.classList.add('hidden');
+        loggedView.classList.remove('hidden');
       } catch (e) {
-        console.warn('Erro ao verificar sessão:', e);
+        loggedView.classList.add('hidden');
+        guestView.classList.remove('hidden');
+      } finally {
+        lucide.createIcons();
       }
     }
 
-    function openAuthModal() {
-      const modal = document.getElementById('modal-auth');
-      const viewLogged = document.getElementById('auth-view-logged');
-      const form = document.getElementById('auth-form');
-      const errBox = document.getElementById('auth-error-msg');
-      errBox.classList.add('hidden');
+    // 7. DETALHES DA RECEITA
+    function openDetailsModal(recipe, isFromExplore = false) {
+      selectedRecipe = recipe;
+      document.getElementById('detail-title').innerText = recipe.title || 'Receita';
+      document.getElementById('detail-category-badge').innerText = recipe.category || 'Geral';
+      
+      const visBadge = document.getElementById('detail-visibility-badge');
+      const isPub = (recipe.isPublic !== false);
+      visBadge.innerText = isPub ? '🌐 Pública' : '🔒 Privada';
+      visBadge.className = `px-2 py-0.5 rounded-md text-xs font-bold ${isPub ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-100 text-neutral-600'}`;
 
-      if (currentUser) {
-        document.getElementById('auth-modal-title').innerText = 'Minha Conta';
-        document.getElementById('logged-user-name').innerText = currentUser.name || 'Chef';
-        document.getElementById('logged-user-email').innerText = currentUser.email || '';
-        document.getElementById('auth-current-username').innerText = currentUser.username ? ('@' + currentUser.username) : '@chef';
-        viewLogged.classList.remove('hidden');
-        form.classList.add('hidden');
+      const forkInfo = document.getElementById('detail-fork-info');
+      if (recipe.forkedFromUsername) {
+        forkInfo.innerHTML = `<i data-lucide="git-fork" class="w-3.5 h-3.5"></i> Inspirada na receita de <b>@${recipe.forkedFromUsername}</b>`;
+        forkInfo.classList.remove('hidden');
       } else {
-        viewLogged.classList.add('hidden');
-        form.classList.remove('hidden');
-        updateAuthModeUI();
+        forkInfo.classList.add('hidden');
       }
-      modal.classList.remove('hidden');
+
+      document.getElementById('detail-time').innerHTML = `<i data-lucide="clock" class="w-4 h-4 text-amber-600"></i> ${recipe.prepTimeMinutes ? recipe.prepTimeMinutes + ' min' : 'Tempo variado'}`;
+      document.getElementById('detail-portions').innerHTML = `<i data-lucide="users" class="w-4 h-4 text-amber-600"></i> ${recipe.portions ? recipe.portions + ' porções' : 'Porções livres'}`;
+      document.getElementById('detail-author').innerHTML = recipe.authorUsername ? `<i data-lucide="user" class="w-4 h-4"></i> @${recipe.authorUsername}` : (recipe.sourceAuthor ? `<i data-lucide="user" class="w-4 h-4"></i> ${recipe.sourceAuthor}` : '');
+
+      // Botões contextuais
+      const btnFork = document.getElementById('btn-fork-detail');
+      const btnEdit = document.getElementById('btn-edit-detail');
+      const btnDelete = document.getElementById('btn-delete-detail');
+
+      if (isFromExplore) {
+        btnFork.classList.remove('hidden');
+        btnEdit.classList.add('hidden');
+        btnDelete.classList.add('hidden');
+      } else {
+        btnFork.classList.add('hidden');
+        btnEdit.classList.remove('hidden');
+        btnDelete.classList.remove('hidden');
+      }
+
+      // Ingredientes
+      const ingList = document.getElementById('detail-ingredients');
+      ingList.innerHTML = '';
+      if (recipe.ingredients && recipe.ingredients.length > 0) {
+        recipe.ingredients.forEach(i => {
+          const li = document.createElement('li');
+          li.className = "flex items-start gap-2.5 p-2 rounded-xl hover:bg-amber-50/50 transition cursor-pointer";
+          li.innerHTML = `
+            <input type="checkbox" class="mt-1 rounded text-amber-500 focus:ring-amber-400">
+            <div>
+              <span class="font-semibold">${i.name}</span>
+              ${i.quantity ? `<span class="text-neutral-500"> - ${i.quantity} ${i.unit || ''}</span>` : ''}
+              ${i.notes ? `<span class="text-xs text-neutral-400 italic block">${i.notes}</span>` : ''}
+            </div>
+          `;
+          li.onclick = (e) => {
+            if (e.target.tagName !== 'INPUT') {
+              const cb = li.querySelector('input');
+              cb.checked = !cb.checked;
+            }
+          };
+          ingList.appendChild(li);
+        });
+      }
+
+      // Instruções
+      const instList = document.getElementById('detail-instructions');
+      instList.innerHTML = '';
+      if (recipe.instructions && recipe.instructions.length > 0) {
+        recipe.instructions.forEach(ins => {
+          const li = document.createElement('li');
+          li.className = "flex items-start gap-3 p-2 rounded-xl hover:bg-neutral-50 transition";
+          li.innerHTML = `
+            <span class="w-6 h-6 rounded-full bg-amber-400 text-amber-950 font-bold text-xs flex items-center justify-center shrink-0">
+              ${ins.stepNumber || 1}
+            </span>
+            <p class="leading-relaxed">${ins.instructionText || ''}</p>
+          `;
+          instList.appendChild(li);
+        });
+      }
+
+      btnEdit.onclick = () => {
+        closeDetailsModal();
+        openEditModal(recipe.id);
+      };
+      btnDelete.onclick = () => {
+        closeDetailsModal();
+        deleteRecipe(recipe.id);
+      };
+
+      document.getElementById('modal-details').classList.remove('hidden');
       lucide.createIcons();
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('modal-details').classList.add('hidden');
+    }
+
+    // 8. MODAL ADICIONAR
+    let currentAddMode = 'audio';
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let audioBlob = null;
+
+    function openAddModal() {
+      if (!getAuthToken()) {
+        openAuthModal();
+        return;
+      }
+      document.getElementById('modal-add').classList.remove('hidden');
+      setAddMode('audio');
+      resetAudioRecording();
+    }
+
+    function closeAddModal() {
+      document.getElementById('modal-add').classList.add('hidden');
+      resetAudioRecording();
+    }
+
+    function setAddMode(mode) {
+      currentAddMode = mode;
+      const btnAudio = document.getElementById('tab-btn-audio');
+      const btnText = document.getElementById('tab-btn-text');
+      const modeAudio = document.getElementById('add-mode-audio');
+      const modeText = document.getElementById('add-mode-text');
+
+      if (mode === 'audio') {
+        btnAudio.className = 'flex-1 py-2 rounded-xl text-xs font-bold transition bg-white text-neutral-900 shadow-sm flex items-center justify-center gap-1.5';
+        btnText.className = 'flex-1 py-2 rounded-xl text-xs font-bold transition text-neutral-500 hover:text-neutral-800 flex items-center justify-center gap-1.5';
+        modeAudio.classList.remove('hidden');
+        modeText.classList.add('hidden');
+      } else {
+        btnText.className = 'flex-1 py-2 rounded-xl text-xs font-bold transition bg-white text-neutral-900 shadow-sm flex items-center justify-center gap-1.5';
+        btnAudio.className = 'flex-1 py-2 rounded-xl text-xs font-bold transition text-neutral-500 hover:text-neutral-800 flex items-center justify-center gap-1.5';
+        modeText.classList.remove('hidden');
+        modeAudio.classList.add('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    async function toggleAudioRecording() {
+      const btn = document.getElementById('btn-record-audio');
+      const status = document.getElementById('record-status');
+
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        btn.classList.remove('pulse-record');
+        status.innerText = 'Gravação finalizada. Clique em Extrair Receita com IA abaixo!';
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+        mediaRecorder.onstop = () => {
+          audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const preview = document.getElementById('audio-preview');
+          preview.src = audioUrl;
+          document.getElementById('audio-preview-container').classList.remove('hidden');
+          stream.getTracks().forEach(t => t.stop());
+        };
+
+        mediaRecorder.start();
+        btn.classList.add('pulse-record');
+        status.innerText = 'Gravando... Fale os ingredientes e passos com clareza!';
+      } catch (e) {
+        alert('Permissão de microfone negada ou não suportada.');
+      }
+    }
+
+    function resetAudioRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+      mediaRecorder = null;
+      audioChunks = [];
+      audioBlob = null;
+      document.getElementById('btn-record-audio').classList.remove('pulse-record');
+      document.getElementById('record-status').innerText = 'Toque no microfone e fale os ingredientes e o modo de preparo!';
+      document.getElementById('audio-preview-container').classList.add('hidden');
+      document.getElementById('text-recipe-input').value = '';
+    }
+
+    async function sendAudioRecipe() {
+      if (!audioBlob) return;
+      setAiProcessing(true);
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recipe.webm');
+
+      try {
+        const res = await fetch('/api/recipes/from-audio', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          closeAddModal();
+          fetchRecipes();
+        } else {
+          alert(data.error || 'Erro ao processar áudio.');
+        }
+      } catch (e) {
+        alert('Erro ao se conectar com a IA.');
+      } finally {
+        setAiProcessing(false);
+      }
+    }
+
+    async function sendTextRecipe() {
+      const text = document.getElementById('text-recipe-input').value.trim();
+      if (!text) return;
+      setAiProcessing(true);
+
+      try {
+        const res = await fetch('/api/recipes/from-text', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          closeAddModal();
+          fetchRecipes();
+        } else {
+          alert(data.error || 'Erro ao extrair receita.');
+        }
+      } catch (e) {
+        alert('Erro ao se conectar com o servidor.');
+      } finally {
+        setAiProcessing(false);
+      }
+    }
+
+    // 9. MODAL EDITAR RECEITA
+    let editingRecipeId = null;
+
+    function openEditModal(recipeId) {
+      const recipe = allRecipes.find(r => r.id === recipeId);
+      if (!recipe) return;
+      editingRecipeId = recipeId;
+
+      document.getElementById('edit-title').value = recipe.title || '';
+      document.getElementById('edit-category').value = recipe.category || 'almoço';
+      document.getElementById('edit-prep-time').value = recipe.prepTimeMinutes || '';
+      document.getElementById('edit-portions').value = recipe.portions || '';
+      document.getElementById('edit-visibility').value = (recipe.isPublic !== false) ? 'true' : 'false';
+
+      document.getElementById('edit-ingredients').value = (recipe.ingredients || [])
+        .map(i => `${i.quantity ? i.quantity + ' ' : ''}${i.unit ? i.unit + ' ' : ''}${i.name || ''}`.trim())
+        .join('\n');
+
+      document.getElementById('edit-instructions').value = (recipe.instructions || [])
+        .map(ins => ins.instructionText || '')
+        .join('\n');
+
+      document.getElementById('modal-edit').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('modal-edit').classList.add('hidden');
+      editingRecipeId = null;
+    }
+
+    async function handleEditSubmit(e) {
+      e.preventDefault();
+      if (!editingRecipeId) return;
+
+      const title = document.getElementById('edit-title').value.trim();
+      const category = document.getElementById('edit-category').value;
+      const prepTimeMinutes = parseInt(document.getElementById('edit-prep-time').value) || null;
+      const portions = parseInt(document.getElementById('edit-portions').value) || null;
+      const isPublic = (document.getElementById('edit-visibility').value === 'true');
+
+      const ingredientsLines = document.getElementById('edit-ingredients').value.split('\n').filter(l => l.trim().length > 0);
+      const ingredients = ingredientsLines.map(line => ({ name: line.trim() }));
+
+      const instructionsLines = document.getElementById('edit-instructions').value.split('\n').filter(l => l.trim().length > 0);
+      const instructions = instructionsLines.map((desc, idx) => ({ stepNumber: idx + 1, description: desc.trim() }));
+
+      try {
+        const res = await fetch(`/api/recipes/${editingRecipeId}`, {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ title, category, prepTimeMinutes, portions, isPublic, ingredients, instructions })
+        });
+        if (res.ok) {
+          closeEditModal();
+          fetchRecipes();
+        } else {
+          alert('Erro ao atualizar receita.');
+        }
+      } catch (err) {
+        alert('Erro ao se conectar ao servidor.');
+      }
+    }
+
+    async function deleteRecipe(recipeId) {
+      if (!confirm('Deseja realmente excluir esta receita do seu caderno?')) return;
+      try {
+        const res = await fetch(`/api/recipes/${recipeId}`, {
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+        if (res.ok) {
+          fetchRecipes();
+        } else {
+          alert('Erro ao excluir receita.');
+        }
+      } catch (e) {
+        alert('Erro ao excluir receita.');
+      }
+    }
+
+    // 10. MODAL AUTENTICAÇÃO
+    function openAuthModal() {
+      document.getElementById('modal-auth').classList.remove('hidden');
+      setAuthMode('login');
     }
 
     function closeAuthModal() {
@@ -607,79 +1451,57 @@
     }
 
     function toggleAuthMode() {
-      authMode = (authMode === 'login') ? 'register' : 'login';
-      updateAuthModeUI();
+      setAuthMode(authMode === 'login' ? 'register' : 'login');
     }
 
     function setAuthMode(mode) {
       authMode = mode;
-      updateAuthModeUI();
-    }
-
-    function updateAuthModeUI() {
-      const errBox = document.getElementById('auth-error-msg');
-      const succBox = document.getElementById('auth-success-msg');
-      errBox.classList.add('hidden');
-      succBox.classList.add('hidden');
-
-      const isLogin = authMode === 'login';
-      const isRegister = authMode === 'register';
-      const isForgot = authMode === 'forgot';
-      const isReset = authMode === 'reset';
-
       const titleEl = document.getElementById('auth-modal-title');
+      const submitBtn = document.getElementById('auth-submit-btn');
+      const toggleBtn = document.getElementById('auth-toggle-mode-btn');
+      const backBtn = document.getElementById('auth-back-to-login');
       const nameCont = document.getElementById('auth-name-container');
-      const usernameCont = document.getElementById('auth-username-container');
+      const userCont = document.getElementById('auth-username-container');
       const emailCont = document.getElementById('auth-email-container');
       const emailLabel = document.getElementById('auth-email-label');
-      const emailInput = document.getElementById('auth-email');
       const passCont = document.getElementById('auth-password-container');
       const passLabel = document.getElementById('auth-password-label');
+      const forgotLink = document.getElementById('btn-forgot-password-link');
       const confirmPassCont = document.getElementById('auth-confirm-password-container');
       const resetTokenCont = document.getElementById('auth-reset-token-container');
-      const forgotLink = document.getElementById('btn-forgot-password-link');
-      const submitBtn = document.getElementById('btn-auth-submit').querySelector('span');
-      const toggleBtn = document.getElementById('btn-auth-toggle');
-      const backBtn = document.getElementById('btn-back-to-login');
 
-      // Reset visibilidades
-      nameCont.classList.add('hidden');
-      usernameCont.classList.add('hidden');
-      emailCont.classList.remove('hidden');
-      passCont.classList.remove('hidden');
-      confirmPassCont.classList.add('hidden');
-      resetTokenCont.classList.add('hidden');
-      forgotLink.classList.remove('hidden');
+      [nameCont, userCont, confirmPassCont, resetTokenCont].forEach(el => el.classList.add('hidden'));
       backBtn.classList.add('hidden');
       toggleBtn.classList.remove('hidden');
+      forgotLink.classList.remove('hidden');
+      emailCont.classList.remove('hidden');
+      passCont.classList.remove('hidden');
 
-      if (isLogin) {
+      if (mode === 'login') {
         titleEl.innerText = 'Entrar no ChefBot';
         emailLabel.innerText = 'E-mail ou @Username';
-        emailInput.placeholder = 'seu@email.com ou @username';
         passLabel.innerText = 'Senha';
         submitBtn.innerText = 'Entrar';
-        toggleBtn.innerText = 'Não tem conta? Cadastre-se';
-      } else if (isRegister) {
+        toggleBtn.innerText = 'Não tem uma conta? Cadastre-se';
+      } else if (mode === 'register') {
         titleEl.innerText = 'Criar Nova Conta';
         nameCont.classList.remove('hidden');
-        usernameCont.classList.remove('hidden');
-        emailLabel.innerText = 'E-mail';
-        emailInput.placeholder = 'seu@email.com';
-        passLabel.innerText = 'Senha';
+        userCont.classList.remove('hidden');
+        emailLabel.innerText = 'Seu E-mail';
+        passLabel.innerText = 'Crie uma Senha';
         confirmPassCont.classList.remove('hidden');
         forgotLink.classList.add('hidden');
-        submitBtn.innerText = 'Cadastrar';
-        toggleBtn.innerText = 'Já possui uma conta? Faça login';
-      } else if (isForgot) {
+        submitBtn.innerText = 'Criar Minha Conta';
+        toggleBtn.innerText = 'Já tem uma conta? Entrar';
+      } else if (mode === 'forgot') {
         titleEl.innerText = 'Recuperar Senha';
-        emailLabel.innerText = 'Informe seu E-mail ou @Username';
-        emailInput.placeholder = 'seu@email.com ou @username';
+        emailLabel.innerText = 'Informe seu e-mail cadastrado';
         passCont.classList.add('hidden');
-        submitBtn.innerText = 'Gerar Código de Recuperação';
+        forgotLink.classList.add('hidden');
+        submitBtn.innerText = 'Enviar Código de Recuperação';
         toggleBtn.classList.add('hidden');
         backBtn.classList.remove('hidden');
-      } else if (isReset) {
+      } else if (mode === 'reset') {
         titleEl.innerText = 'Redefinir Senha';
         emailCont.classList.add('hidden');
         resetTokenCont.classList.remove('hidden');
@@ -718,9 +1540,8 @@
           if (res.ok && data.token) {
             setAuthToken(data.token);
             currentUser = data;
-            document.getElementById('auth-status-dot').classList.remove('hidden');
             closeAuthModal();
-            fetchRecipes();
+            refreshActiveTab();
           } else {
             errBox.innerText = data.error || 'Falha no login.';
             errBox.classList.remove('hidden');
@@ -731,7 +1552,7 @@
         }
       } else if (authMode === 'register') {
         if (password !== confirmPassword) {
-          errBox.innerText = 'As senhas digitadas não são iguais.';
+          errBox.innerText = 'As senhas digitadas não coincidem.';
           errBox.classList.remove('hidden');
           return;
         }
@@ -745,11 +1566,10 @@
           if (res.ok && data.token) {
             setAuthToken(data.token);
             currentUser = data;
-            document.getElementById('auth-status-dot').classList.remove('hidden');
             closeAuthModal();
-            fetchRecipes();
+            refreshActiveTab();
           } else {
-            errBox.innerText = data.error || 'Falha no cadastro.';
+            errBox.innerText = data.error || 'Erro no cadastro.';
             errBox.classList.remove('hidden');
           }
         } catch (err) {
@@ -761,21 +1581,18 @@
           const res = await fetch('/api/auth/forgot-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier: email })
+            body: JSON.stringify({ email })
           });
           const data = await res.json();
           if (res.ok) {
-            if (data.resetToken) {
-              document.getElementById('auth-reset-token').value = data.resetToken;
-              succBox.innerText = `Código gerado: ${data.resetToken}. Digite sua nova senha abaixo.`;
-            } else {
-              succBox.innerText = data.message || 'Verifique sua solicitação.';
-            }
+            succBox.innerText = data.message || 'Código enviado com sucesso!';
             succBox.classList.remove('hidden');
-            setAuthMode('reset');
-            succBox.classList.remove('hidden');
+            setTimeout(() => {
+              setAuthMode('reset');
+              succBox.classList.add('hidden');
+            }, 1800);
           } else {
-            errBox.innerText = data.error || 'Erro ao processar solicitação.';
+            errBox.innerText = data.error || 'Erro ao solicitar código.';
             errBox.classList.remove('hidden');
           }
         } catch (err) {
@@ -801,7 +1618,7 @@
             setTimeout(() => {
               setAuthMode('login');
               succBox.classList.add('hidden');
-            }, 2000);
+            }, 1800);
           } else {
             errBox.innerText = data.error || 'Código inválido ou expirado.';
             errBox.classList.remove('hidden');
@@ -813,705 +1630,34 @@
       }
     }
 
-    async function requestLinkCode() {
-      try {
-        const res = await fetch('/api/auth/link-code', {
-          method: 'POST',
-          headers: authHeaders()
-        });
-        const data = await res.json();
-        if (res.ok && data.code) {
-          const display = document.getElementById('link-code-display');
-          const codeEl = document.getElementById('link-code-text');
-          codeEl.innerText = `/vincular ${data.code}`;
-          display.classList.remove('hidden');
-        } else {
-          alert(data.error || 'Erro ao gerar código.');
-        }
-      } catch (e) {
-        alert('Erro ao se comunicar com o servidor.');
-      }
-    }
-
     function handleLogout() {
       setAuthToken(null);
       currentUser = null;
-      document.getElementById('auth-status-dot').classList.add('hidden');
-      closeAuthModal();
+      switchTab('my-recipes');
       fetchRecipes();
     }
 
-    // Registro do PWA Service Worker & Install Prompt
+    // PWA Service Worker & Install Prompt
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(reg => console.log('ServiceWorker registrado:', reg.scope))
-          .catch(err => console.warn('Falha ao registrar ServiceWorker:', err));
+        navigator.serviceWorker.register('/sw.js').catch(console.warn);
       });
     }
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      const installBtn = document.getElementById('btn-install-pwa');
-      if (installBtn) {
-        installBtn.classList.remove('hidden');
-        lucide.createIcons();
-      }
+      const btn = document.getElementById('btn-install-pwa');
+      if (btn) btn.classList.remove('hidden');
     });
 
-    async function installPWA() {
-      if (!deferredPrompt) {
-        alert('Para instalar no iOS Safari, toque no botão "Compartilhar" e depois em "Adicionar à Tela de Início".');
-        return;
-      }
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        const installBtn = document.getElementById('btn-install-pwa');
-        if (installBtn) installBtn.classList.add('hidden');
-      }
-      deferredPrompt = null;
-    }
-
-    // Inicialização
-    document.addEventListener('DOMContentLoaded', async () => {
-      lucide.createIcons();
-      await checkAuthSession();
-      fetchRecipes();
-    });
-
-    // Manipulação da busca com debounce suave
-    function handleSearchInput(val) {
-      searchQuery = val.trim();
-      const clearBtn = document.getElementById('btn-clear-search');
-      if (searchQuery.length > 0) {
-        clearBtn.classList.remove('hidden');
-      } else {
-        clearBtn.classList.add('hidden');
-      }
-      lucide.createIcons();
-
-      if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
-      searchDebounceTimeout = setTimeout(() => {
-        fetchRecipes();
-      }, 250);
-    }
-
-    function clearSearch() {
-      const input = document.getElementById('search-input');
-      input.value = '';
-      searchQuery = '';
-      document.getElementById('btn-clear-search').classList.add('hidden');
-      lucide.createIcons();
-      fetchRecipes();
-    }
-
-    // 1. CARREGAR RECEITAS
-    async function fetchRecipes() {
-      showLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (currentFilter !== 'Todos') {
-          params.append('category', currentFilter);
-        }
-        if (searchQuery) {
-          params.append('q', searchQuery);
-        }
-
-        const url = '/api/recipes' + (params.toString() ? '?' + params.toString() : '');
-        const res = await fetch(url, { headers: authHeaders() });
-        if (res.status === 401 || res.status === 403) {
-          openAuthModal();
-          showLoading(false);
-          return;
-        }
-        if (!res.ok) throw new Error('Falha ao buscar receitas');
-        allRecipes = await res.json();
-        renderRecipes(allRecipes);
-      } catch (err) {
-        console.error(err);
-        if (!getAuthToken()) {
-          openAuthModal();
-        } else {
-          alert('Não foi possível carregar as receitas. Verifique sua conexão com o servidor!');
-        }
-      } finally {
-        showLoading(false);
-      }
-    }
-
-    function setFilter(cat) {
-      currentFilter = cat;
-      document.querySelectorAll('.category-chip').forEach(chip => {
-        if (chip.getAttribute('data-category').toLowerCase() === cat.toLowerCase()) {
-          chip.className = 'category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-amber-400 text-amber-950 shadow-sm font-semibold';
-        } else {
-          chip.className = 'category-chip px-4 py-1.5 rounded-full whitespace-nowrap transition bg-neutral-100 text-neutral-600 hover:bg-amber-100';
-        }
-      });
-      fetchRecipes();
-    }
-
-    // 2. RENDERIZAR CARDS
-    function renderRecipes(recipes) {
-      const container = document.getElementById('recipe-list');
-      const emptyState = document.getElementById('empty-state');
-      const emptyTitle = emptyState.querySelector('h3');
-      const emptyDesc = emptyState.querySelector('p');
-      container.innerHTML = '';
-
-      if (!recipes || recipes.length === 0) {
-        if (searchQuery) {
-          emptyTitle.innerText = 'Nenhuma receita encontrada';
-          emptyDesc.innerText = currentFilter !== 'Todos' 
-            ? `Não encontramos resultados para "${searchQuery}" na categoria ${currentFilter}.`
-            : `Não encontramos resultados para "${searchQuery}". Tente outros termos!`;
-        } else {
-          emptyTitle.innerText = currentFilter !== 'Todos' 
-            ? `Nenhuma receita em ${currentFilter}`
-            : 'Nenhuma receita cadastrada';
-          emptyDesc.innerText = 'Adicione uma receita falando no microfone ou escrevendo no botão abaixo!';
-        }
-        emptyState.classList.remove('hidden');
-        return;
-      }
-      emptyState.classList.add('hidden');
-
-      recipes.forEach(r => {
-        const card = document.createElement('div');
-        card.className = "bg-white border border-amber-100 rounded-3xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between cursor-pointer border-l-4 border-l-amber-400";
-        card.onclick = (e) => {
-          if (!e.target.closest('.action-btn')) {
-            openDetailsModal(r);
-          }
-        };
-
-        const categoryTag = r.category ? r.category : 'Receita';
-        const prepTime = r.prepTimeMinutes ? `${r.prepTimeMinutes} min` : 'Tempo livre';
-        const ingCount = r.ingredients ? r.ingredients.length : 0;
-
-        card.innerHTML = `
-          <div class="flex items-start justify-between gap-2">
-            <div>
-              <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 mb-1">
-                ${categoryTag}
-              </span>
-              <h3 class="font-bold text-base text-neutral-900 leading-snug">${r.title || 'Receita sem título'}</h3>
-            </div>
-            
-            <!-- Botões de Ação Rápida -->
-            <div class="flex items-center gap-1 action-btn">
-              <button onclick="openEditModal(${r.id})" class="p-2 text-neutral-400 hover:text-amber-600 rounded-xl hover:bg-amber-50 transition" title="Editar">
-                <i data-lucide="pencil" class="w-4 h-4"></i>
-              </button>
-              <button onclick="deleteRecipe(${r.id})" class="p-2 text-neutral-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition" title="Excluir">
-                <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="mt-4 flex items-center justify-between text-xs text-neutral-500 pt-2 border-t border-neutral-100">
-            <span class="flex items-center gap-1">
-              <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i>
-              ${prepTime}
-            </span>
-            <span class="flex items-center gap-1">
-              <i data-lucide="shopping-basket" class="w-3.5 h-3.5 text-neutral-400"></i>
-              ${ingCount} ingredientes
-            </span>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-
-      lucide.createIcons();
-    }
-
-    // 3. DETALHES DA RECEITA
-    function openDetailsModal(recipe) {
-      selectedRecipe = recipe;
-      document.getElementById('detail-title').innerText = recipe.title || 'Receita';
-      document.getElementById('detail-category-badge').innerText = recipe.category || 'Geral';
-      
-      document.getElementById('detail-time').innerHTML = `<i data-lucide="clock" class="w-4 h-4 text-amber-600"></i> ${recipe.prepTimeMinutes ? recipe.prepTimeMinutes + ' min' : 'Tempo variado'}`;
-      document.getElementById('detail-portions').innerHTML = `<i data-lucide="users" class="w-4 h-4 text-amber-600"></i> ${recipe.portions ? recipe.portions + ' porções' : 'Porções livres'}`;
-      document.getElementById('detail-author').innerHTML = recipe.sourceAuthor ? `<i data-lucide="user" class="w-4 h-4"></i> ${recipe.sourceAuthor}` : '';
-
-      // Lista de ingredientes interativa (com checkbox)
-      const ingList = document.getElementById('detail-ingredients');
-      ingList.innerHTML = '';
-      if (recipe.ingredients && recipe.ingredients.length > 0) {
-        recipe.ingredients.forEach(i => {
-          const li = document.createElement('li');
-          li.className = "flex items-start gap-2.5 p-2 rounded-xl hover:bg-amber-50/50 transition cursor-pointer";
-          li.innerHTML = `
-            <input type="checkbox" class="mt-1 rounded text-amber-500 focus:ring-amber-400">
-            <div>
-              <span class="font-semibold">${i.name}</span>
-              ${i.quantity ? `<span class="text-neutral-500"> - ${i.quantity} ${i.unit || ''}</span>` : ''}
-              ${i.notes ? `<span class="text-xs text-neutral-400 italic block">${i.notes}</span>` : ''}
-            </div>
-          `;
-          li.onclick = (e) => {
-            if (e.target.tagName !== 'INPUT') {
-              const cb = li.querySelector('input');
-              cb.checked = !cb.checked;
-            }
-          };
-          ingList.appendChild(li);
+    function installPWA() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => {
+          deferredPrompt = null;
+          document.getElementById('btn-install-pwa').classList.add('hidden');
         });
-      } else {
-        ingList.innerHTML = '<li class="text-xs text-neutral-400">Nenhum ingrediente especificado.</li>';
-      }
-
-      // Passos de preparo
-      const instList = document.getElementById('detail-instructions');
-      instList.innerHTML = '';
-      if (recipe.instructions && recipe.instructions.length > 0) {
-        recipe.instructions.forEach(step => {
-          const li = document.createElement('li');
-          li.className = "flex gap-3 items-start";
-          li.innerHTML = `
-            <span class="w-6 h-6 rounded-full bg-amber-400 text-amber-950 font-black text-xs flex items-center justify-center shrink-0">
-              ${step.stepNumber}
-            </span>
-            <p class="text-neutral-700 leading-relaxed">${step.description}</p>
-          `;
-          instList.appendChild(li);
-        });
-      } else {
-        instList.innerHTML = '<li class="text-xs text-neutral-400">Nenhum passo especificado.</li>';
-      }
-
-      document.getElementById('btn-edit-detail').onclick = () => {
-        closeDetailsModal();
-        openEditModal(recipe.id);
-      };
-
-      document.getElementById('btn-delete-detail').onclick = () => {
-        closeDetailsModal();
-        deleteRecipe(recipe.id);
-      };
-
-      document.getElementById('modal-details').classList.remove('hidden');
-      lucide.createIcons();
-    }
-
-    function closeDetailsModal() {
-      document.getElementById('modal-details').classList.add('hidden');
-    }
-
-    // 4. EXCLUIR RECEITA
-    async function deleteRecipe(id) {
-      if (!confirm('Deseja realmente deletar esta receita?')) return;
-      try {
-        const res = await fetch(`/api/recipes/${id}`, { 
-          method: 'DELETE',
-          headers: authHeaders()
-        });
-        if (res.status === 401 || res.status === 403) {
-          openAuthModal();
-          alert('Faça login ou crie uma conta para adicionar receitas!');
-          return;
-        }
-        if (res.ok) {
-          fetchRecipes();
-        } else {
-          alert('Erro ao excluir a receita.');
-        }
-      } catch (e) {
-        console.error(e);
-        alert('Erro ao se comunicar com o servidor.');
-      }
-    }
-
-    // 5. MODAL DE ADIÇÃO (Áudio / Texto)
-    function openAddModal() {
-      document.getElementById('modal-add').classList.remove('hidden');
-      switchAddTab('audio');
-      resetAudioRecordingState();
-    }
-
-    function closeAddModal() {
-      document.getElementById('modal-add').classList.add('hidden');
-      stopAudioRecordingIfActive();
-    }
-
-    function switchAddTab(tab) {
-      const isAudio = tab === 'audio';
-      document.getElementById('tab-audio-btn').className = isAudio 
-        ? 'flex-1 py-2 text-xs font-bold rounded-xl transition bg-white text-neutral-900 shadow-sm flex items-center justify-center gap-1.5'
-        : 'flex-1 py-2 text-xs font-bold rounded-xl transition text-neutral-500 hover:text-neutral-900 flex items-center justify-center gap-1.5';
-
-      document.getElementById('tab-text-btn').className = !isAudio
-        ? 'flex-1 py-2 text-xs font-bold rounded-xl transition bg-white text-neutral-900 shadow-sm flex items-center justify-center gap-1.5'
-        : 'flex-1 py-2 text-xs font-bold rounded-xl transition text-neutral-500 hover:text-neutral-900 flex items-center justify-center gap-1.5';
-
-      document.getElementById('tab-audio-content').classList.toggle('hidden', !isAudio);
-      document.getElementById('tab-text-content').classList.toggle('hidden', isAudio);
-    }
-
-    // ENVIO POR TEXTO
-    async function submitTextRecipe() {
-      const text = document.getElementById('recipe-text-input').value.trim();
-      if (!text) {
-        alert('Por favor, digite a receita.');
-        return;
-      }
-
-      setAiProcessing(true);
-      try {
-        const res = await fetch('/api/recipes/from-text', {
-          method: 'POST',
-          headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ text })
-        });
-        if (res.status === 401 || res.status === 403) {
-          openAuthModal();
-          alert('Faça login ou crie uma conta para adicionar receitas!');
-          return;
-        }
-        const data = await res.json();
-        if (res.ok) {
-          document.getElementById('recipe-text-input').value = '';
-          closeAddModal();
-          fetchRecipes();
-        } else {
-          alert(data.error || 'Erro ao processar receita.');
-        }
-      } catch (e) {
-        alert('Erro de conexão ao processar receita.');
-      } finally {
-        setAiProcessing(false);
-      }
-    }
-
-    // DETECÇÃO DE MIME TYPE DE ÁUDIO COMPATÍVEL (Android / iOS / Desktop)
-    function getSupportedAudioMimeType() {
-      const candidates = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/mp4',
-        'audio/aac',
-        'audio/ogg;codecs=opus',
-        'audio/ogg'
-      ];
-      if (typeof MediaRecorder === 'undefined') return '';
-      for (const mime of candidates) {
-        if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mime)) {
-          return mime;
-        }
-      }
-      return '';
-    }
-
-    // GRAVAÇÃO DE ÁUDIO VIA NAVEGADOR
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let audioBlob = null;
-    let timerInterval = null;
-    let secondsElapsed = 0;
-    let recordedMimeType = 'audio/webm';
-
-    async function toggleRecording() {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        clearInterval(timerInterval);
-        document.getElementById('record-btn').classList.remove('pulse-record', 'bg-red-500');
-        document.getElementById('record-btn').classList.add('bg-amber-400');
-        document.getElementById('record-status-label').innerText = 'Gravar';
-      } else {
-        try {
-          // Filtros nativos de voz para ambiente de cozinha (reduz ruído e eco)
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-              channelCount: 1
-            }
-          });
-
-          audioChunks = [];
-          recordedMimeType = getSupportedAudioMimeType() || 'audio/webm';
-          
-          const options = recordedMimeType ? { mimeType: recordedMimeType } : {};
-          mediaRecorder = new MediaRecorder(stream, options);
-
-          mediaRecorder.ondataavailable = e => {
-            if (e.data && e.data.size > 0) audioChunks.push(e.data);
-          };
-
-          mediaRecorder.onstop = () => {
-            const actualType = mediaRecorder.mimeType || recordedMimeType;
-            audioBlob = new Blob(audioChunks, { type: actualType });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const preview = document.getElementById('audio-preview');
-            preview.src = audioUrl;
-            document.getElementById('audio-preview-container').classList.remove('hidden');
-            stream.getTracks().forEach(track => track.stop());
-          };
-
-          mediaRecorder.start();
-          document.getElementById('record-btn').classList.add('pulse-record');
-          document.getElementById('record-status-label').innerText = 'Gravando...';
-          document.getElementById('audio-preview-container').classList.add('hidden');
-          document.getElementById('audio-file-name').classList.add('hidden');
-          
-          secondsElapsed = 0;
-          const timer = document.getElementById('recording-timer');
-          timer.classList.remove('hidden');
-          timer.innerText = '00:00';
-          timerInterval = setInterval(() => {
-            secondsElapsed++;
-            const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
-            const secs = String(secondsElapsed % 60).padStart(2, '0');
-            timer.innerText = `${mins}:${secs}`;
-          }, 1000);
-
-        } catch (err) {
-          console.error(err);
-          alert('Permissão de microfone negada ou microfone indisponível.');
-        }
-      }
-    }
-
-    // Upload de arquivo de áudio já gravado (ex: WhatsApp)
-    function handleAudioFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      audioBlob = file;
-      recordedMimeType = file.type || 'audio/ogg';
-
-      const audioUrl = URL.createObjectURL(file);
-      const preview = document.getElementById('audio-preview');
-      preview.src = audioUrl;
-
-      const fileNameLabel = document.getElementById('audio-file-name');
-      fileNameLabel.innerText = `Arquivo: ${file.name} (${Math.round(file.size / 1024)} KB)`;
-      fileNameLabel.classList.remove('hidden');
-
-      document.getElementById('audio-preview-container').classList.remove('hidden');
-      document.getElementById('recording-timer').classList.add('hidden');
-    }
-
-    function stopAudioRecordingIfActive() {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-      }
-      clearInterval(timerInterval);
-    }
-
-    function resetAudioRecordingState() {
-      audioBlob = null;
-      document.getElementById('audio-preview-container').classList.add('hidden');
-      document.getElementById('recording-timer').classList.add('hidden');
-      document.getElementById('audio-file-name').classList.add('hidden');
-      document.getElementById('audio-file-input').value = '';
-    }
-
-    async function submitAudioRecipe() {
-      if (!audioBlob) {
-        alert('Grave ou selecione um áudio primeiro.');
-        return;
-      }
-
-      setAiProcessing(true);
-      const formData = new FormData();
-      const ext = recordedMimeType.includes('mp4') ? 'm4a' : (recordedMimeType.includes('ogg') ? 'ogg' : 'webm');
-      formData.append('audio', audioBlob, `audio_recipe.${ext}`);
-
-      try {
-        const res = await fetch('/api/recipes/from-audio', {
-          method: 'POST',
-          headers: authHeaders(),
-          body: formData
-        });
-        if (res.status === 401 || res.status === 403) {
-          openAuthModal();
-          alert('Faça login ou crie uma conta para adicionar receitas!');
-          return;
-        }
-        const data = await res.json();
-        if (res.ok) {
-          closeAddModal();
-          fetchRecipes();
-        } else {
-          alert(data.error || 'Erro ao processar áudio.');
-        }
-      } catch (e) {
-        console.error(e);
-        alert('Erro ao enviar áudio.');
-      } finally {
-        setAiProcessing(false);
-      }
-    }
-
-    // 6. EDITAR RECEITA
-    function openEditModal(id) {
-      const recipe = allRecipes.find(r => r.id === id);
-      if (!recipe) return;
-
-      document.getElementById('edit-id').value = recipe.id;
-      document.getElementById('edit-title').value = recipe.title || '';
-      document.getElementById('edit-category').value = recipe.category ? recipe.category.toLowerCase() : 'almoço';
-      document.getElementById('edit-prep-time').value = recipe.prepTimeMinutes || '';
-      document.getElementById('edit-portions').value = recipe.portions || '';
-      document.getElementById('ai-edit-prompt').value = '';
-
-      // Formatando ingredientes preservando nome, quantidade, unidade e observação
-      const ingLines = (recipe.ingredients || []).map(i => {
-        let line = i.name;
-        if (i.quantity) line += ` - ${i.quantity}`;
-        if (i.unit) line += ` ${i.unit}`;
-        if (i.notes) line += ` (${i.notes})`;
-        return line;
-      }).join('\n');
-      document.getElementById('edit-ingredients').value = ingLines;
-
-      // Formatando passos em linhas
-      const instLines = (recipe.instructions || []).map(i => i.description).join('\n');
-      document.getElementById('edit-instructions').value = instLines;
-
-      document.getElementById('modal-edit').classList.remove('hidden');
-      lucide.createIcons();
-    }
-
-    function closeEditModal() {
-      document.getElementById('modal-edit').classList.add('hidden');
-    }
-
-    // Aplicar alteração inteligente via IA
-    async function submitAiEditRecipe() {
-      const id = document.getElementById('edit-id').value;
-      const instructions = document.getElementById('ai-edit-prompt').value.trim();
-      if (!instructions) {
-        alert('Diga o que você deseja alterar na receita.');
-        return;
-      }
-
-      const btn = document.getElementById('btn-apply-ai-edit');
-      btn.disabled = true;
-      btn.innerText = 'Processando...';
-
-      try {
-        const res = await fetch(`/api/recipes/${id}/ai-update`, {
-          method: 'POST',
-          headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ instructions })
-        });
-        if (res.status === 401 || res.status === 403) {
-          openAuthModal();
-          alert('Faça login ou crie uma conta para adicionar receitas!');
-          return;
-        }
-        const updated = await res.json();
-        if (res.ok) {
-          closeEditModal();
-          await fetchRecipes();
-          openDetailsModal(updated);
-        } else {
-          alert(updated.error || 'Não foi possível atualizar a receita com a IA.');
-        }
-      } catch (e) {
-        console.error(e);
-        alert('Erro ao se comunicar com o servidor.');
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i data-lucide="send" class="w-3.5 h-3.5"></i> Aplicar';
-        lucide.createIcons();
-      }
-    }
-
-    async function saveEditedRecipe(e) {
-      e.preventDefault();
-      const id = document.getElementById('edit-id').value;
-      const title = document.getElementById('edit-title').value;
-      const category = document.getElementById('edit-category').value;
-      const prepTimeMinutes = parseInt(document.getElementById('edit-prep-time').value) || null;
-      const portions = parseInt(document.getElementById('edit-portions').value) || null;
-
-      // Parser inteligente que preserva nome, quantidade, unidade e observação
-      const ingText = document.getElementById('edit-ingredients').value;
-      const ingredients = ingText.split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-        .map(line => {
-          let name = line;
-          let quantity = null;
-          let unit = null;
-          let notes = null;
-
-          // Extrai notas entre parênteses
-          const notesMatch = line.match(/\((.*?)\)/);
-          if (notesMatch) {
-            notes = notesMatch[1].trim();
-            line = line.replace(/\(.*?\)/, '').trim();
-          }
-
-          if (line.includes('|')) {
-            const parts = line.split('|');
-            name = parts[0].trim();
-            quantity = parts[1] ? parts[1].trim() : null;
-            unit = parts[2] ? parts[2].trim() : null;
-            if (parts[3]) notes = parts[3].trim();
-          } else if (line.includes('-')) {
-            const parts = line.split('-');
-            name = parts[0].trim();
-            const rest = parts[1] ? parts[1].trim() : '';
-            if (rest) {
-              const qtyMatch = rest.match(/^(\d+(?:[.,/]\d+)?)\s*(.*)$/);
-              if (qtyMatch) {
-                quantity = qtyMatch[1];
-                unit = qtyMatch[2] ? qtyMatch[2].trim() : null;
-              } else {
-                quantity = rest;
-              }
-            }
-          }
-
-          return { name, quantity, unit, notes };
-        });
-
-      const instText = document.getElementById('edit-instructions').value;
-      const instructions = instText.split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-        .map((line, idx) => ({
-          stepNumber: idx + 1,
-          description: line
-        }));
-
-      try {
-        const res = await fetch(`/api/recipes/${id}`, {
-          method: 'PUT',
-          headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({
-            title,
-            category,
-            prepTimeMinutes,
-            portions,
-            ingredients,
-            instructions
-          })
-        });
-        if (res.status === 401 || res.status === 403) {
-          openAuthModal();
-          alert('Faça login ou crie uma conta para adicionar receitas!');
-          return;
-        }
-
-        if (res.ok) {
-          closeEditModal();
-          fetchRecipes();
-        } else {
-          alert('Erro ao atualizar a receita.');
-        }
-      } catch (err) {
-        console.error(err);
-        alert('Erro ao salvar alterações.');
       }
     }
 
@@ -1524,24 +1670,15 @@
       document.getElementById('ai-processing').classList.toggle('hidden', !active);
       const btnAudio = document.getElementById('btn-send-audio');
       const btnText = document.getElementById('btn-send-text');
-      if (btnAudio) {
-        btnAudio.disabled = active;
-        btnAudio.classList.toggle('opacity-50', active);
-        btnAudio.classList.toggle('cursor-not-allowed', active);
-        btnAudio.innerHTML = active
-          ? '<div class="w-5 h-5 border-2 border-amber-950 border-t-transparent rounded-full animate-spin"></div> Processando com IA...'
-          : '<i data-lucide="sparkles" class="w-5 h-5 text-red-600"></i> Extrair Receita com IA';
-      }
-      if (btnText) {
-        btnText.disabled = active;
-        btnText.classList.toggle('opacity-50', active);
-        btnText.classList.toggle('cursor-not-allowed', active);
-        btnText.innerHTML = active
-          ? '<div class="w-5 h-5 border-2 border-amber-950 border-t-transparent rounded-full animate-spin"></div> Processando com IA...'
-          : '<i data-lucide="sparkles" class="w-5 h-5 text-red-600"></i> Extrair e Salvar com IA';
-      }
-      lucide.createIcons();
+      if (btnAudio) btnAudio.disabled = active;
+      if (btnText) btnText.disabled = active;
     }
+
+    // Inicialização da aplicação
+    window.addEventListener('DOMContentLoaded', async () => {
+      lucide.createIcons();
+      switchTab('my-recipes');
+    });
   </script>
 </body>
 </html>

@@ -66,6 +66,9 @@
 </head>
 <body class="text-neutral-800 antialiased font-sans select-none bg-neutral-100">
 
+  <!-- TOAST CONTAINER FLUTUANTE (UI Otimista & Notificações) -->
+  <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none w-11/12 max-w-sm"></div>
+
   <!-- APP CONTAINER (Mobile Frame Centralizado em telas grandes) -->
   <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-xl relative pb-24">
 
@@ -678,6 +681,49 @@
       }
     };
 
+    // Sistema de Notificações Toast Leve e Flutuante (Substituto para alert)
+    function showToast(message, type = 'info', duration = 2500) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      const bgColors = {
+        success: 'bg-emerald-600 text-white shadow-emerald-200',
+        error: 'bg-red-600 text-white shadow-red-200',
+        info: 'bg-neutral-850 bg-neutral-900 text-white shadow-neutral-300',
+        warning: 'bg-amber-500 text-amber-950 shadow-amber-200'
+      };
+      const icons = {
+        success: 'check-circle',
+        error: 'alert-triangle',
+        info: 'info',
+        warning: 'alert-circle'
+      };
+
+      const colorClass = bgColors[type] || bgColors.info;
+      const iconName = icons[type] || 'info';
+
+      toast.className = `flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-lg text-xs font-semibold transform transition-all duration-300 opacity-0 -translate-y-2 pointer-events-auto ${colorClass}`;
+      toast.innerHTML = `
+        <i data-lucide="${iconName}" class="w-4 h-4 shrink-0"></i>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      // Animação de entrada
+      requestAnimationFrame(() => {
+        toast.classList.remove('opacity-0', '-translate-y-2');
+        toast.classList.add('opacity-100', 'translate-y-0');
+      });
+
+      // Remoção automática após a duração
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
     function setSyncIndicator(active) {
       const el = document.getElementById('sync-indicator');
       if (el) el.classList.toggle('hidden', !active);
@@ -849,9 +895,9 @@
 
             <!-- Botão Puxar para Minhas Receitas -->
             <div class="action-btn">
-              <button onclick="forkRecipe(${r.id})" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-200 shadow-sm" title="Puxar para meu caderno">
+              <button id="btn-fork-${r.id}" onclick="forkRecipe(${r.id}, event)" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-200 shadow-sm" title="Puxar para meu caderno">
                 <i data-lucide="download" class="w-3.5 h-3.5 text-amber-700"></i>
-                <span>Puxar</span>
+                <span class="btn-text">Puxar</span>
               </button>
             </div>
           </div>
@@ -863,7 +909,7 @@
             </span>
             <span class="flex items-center gap-1 text-amber-800 font-medium">
               <i data-lucide="git-fork" class="w-3.5 h-3.5"></i>
-              ${forkCount} salvamentos
+              <span id="fork-count-${r.id}">${forkCount}</span> salvamentos
             </span>
           </div>
         `;
@@ -927,7 +973,7 @@
               <span class="text-[10px] text-amber-700 block">@${c.username}</span>
             </div>
             ${!c.isSelf ? `
-              <button onclick="toggleFollowChef('${c.username}')" class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${c.isFollowing ? 'bg-neutral-200 text-neutral-700' : 'bg-amber-400 text-amber-950'}">
+              <button id="btn-follow-${c.username}" onclick="toggleFollowChef('${c.username}', event)" class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition ${c.isFollowing ? 'bg-neutral-200 text-neutral-700' : 'bg-amber-400 text-amber-950'}">
                 ${c.isFollowing ? 'Seguindo' : 'Seguir'}
               </button>
             ` : ''}
@@ -939,74 +985,248 @@
       }
     }
 
-    async function toggleFollowChef(username) {
+    async function toggleFollowChef(username, event) {
+      if (event) event.stopPropagation();
       if (!getAuthToken()) {
         openAuthModal();
         return;
       }
+
+      // 1. Atualização Otimista Imediata (0ms)
+      const btn = document.getElementById(`btn-follow-${username}`);
+      let previousIsFollowing = false;
+      if (btn) {
+        previousIsFollowing = btn.innerText.trim().toLowerCase().includes('seguindo');
+        const nextIsFollowing = !previousIsFollowing;
+        btn.innerText = nextIsFollowing ? 'Seguindo' : 'Seguir';
+        btn.className = `ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition ${nextIsFollowing ? 'bg-neutral-200 text-neutral-700' : 'bg-amber-400 text-amber-950'}`;
+      }
+
+      // Se estiver na aba Meu Perfil e o chef for o próprio ou afetar stats, atualiza contagem
+      const followingCountEl = document.getElementById('stat-following-count');
+      let prevCount = null;
+      if (followingCountEl) {
+        prevCount = parseInt(followingCountEl.innerText) || 0;
+        followingCountEl.innerText = previousIsFollowing ? Math.max(0, prevCount - 1) : (prevCount + 1);
+      }
+
+      showToast(previousIsFollowing ? `Você deixou de seguir @${username}` : `Agora você está seguindo @${username}!`, 'info', 1800);
+
+      // 2. Requisição em background
       try {
         const res = await fetch(`/api/users/${username}/follow`, {
           method: 'POST',
           headers: authHeaders()
         });
+
         if (res.ok) {
-          if (exploreSearchQuery) searchChefsSection(exploreSearchQuery);
+          // Atualiza dados silenciosamente em background se necessário
           if (activeTab === 'profile') loadUserProfile();
         } else {
-          const data = await res.json();
-          alert(data.error || 'Erro ao seguir chef.');
+          // 3. Rollback em caso de erro na resposta
+          const data = await res.json().catch(() => ({}));
+          rollbackFollowState(username, btn, previousIsFollowing, followingCountEl, prevCount);
+          showToast(data.error || 'Não foi possível atualizar. Verifique sua conexão.', 'error', 3000);
         }
       } catch (e) {
-        alert('Erro ao se conectar ao servidor.');
+        // Rollback em caso de falha de rede/timeout
+        rollbackFollowState(username, btn, previousIsFollowing, followingCountEl, prevCount);
+        showToast('Não foi possível atualizar. Verifique sua conexão.', 'error', 3000);
       }
     }
 
-    // 3. CLONAR RECEITA (FORK)
-    async function forkRecipe(recipeId) {
+    function rollbackFollowState(username, btn, wasFollowing, countEl, prevCount) {
+      if (btn) {
+        btn.innerText = wasFollowing ? 'Seguindo' : 'Seguir';
+        btn.className = `ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition ${wasFollowing ? 'bg-neutral-200 text-neutral-700' : 'bg-amber-400 text-amber-950'}`;
+      }
+      if (countEl && prevCount !== null) {
+        countEl.innerText = prevCount;
+      }
+    }
+
+    // 3. CLONAR RECEITA (FORK) OTIMISTA COM MICRO-INTERAÇÃO
+    async function forkRecipe(recipeId, event) {
+      if (event) event.stopPropagation();
       if (!getAuthToken()) {
         openAuthModal();
         return;
       }
+
+      // 1. Otimismo imediato (0ms): busca elemento do botão no feed e/ou modal
+      const btn = document.getElementById(`btn-fork-${recipeId}`);
+      const btnDetail = document.getElementById('btn-fork-detail');
+      const forkCountEl = document.getElementById(`fork-count-${recipeId}`);
+      
+      let prevBtnHtml = null;
+      let prevCount = null;
+
+      if (btn) {
+        prevBtnHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.className = "px-3 py-1.5 bg-emerald-50 text-emerald-800 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-emerald-300 shadow-sm cursor-default";
+        btn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i><span>Salva!</span>`;
+      }
+
+      if (btnDetail && selectedRecipe && selectedRecipe.id === recipeId) {
+        btnDetail.disabled = true;
+        btnDetail.className = "flex-1 py-3 bg-emerald-500 text-white font-bold rounded-2xl flex items-center justify-center gap-2 shadow-sm transition cursor-default";
+        btnDetail.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Receita Salva!`;
+      }
+
+      if (forkCountEl) {
+        prevCount = parseInt(forkCountEl.innerText) || 0;
+        forkCountEl.innerText = prevCount + 1;
+      }
+      lucide.createIcons();
+
+      // Injeta imediatamente no cache local de Minhas Receitas (SWR Instant Boot)
+      const targetRecipe = (exploreRecipesList && exploreRecipesList.find(r => r.id === recipeId)) || selectedRecipe;
+      if (targetRecipe) {
+        const clonedRecipe = {
+          ...targetRecipe,
+          id: -Date.now(), // ID temporário até revalidar
+          forkedFromUsername: targetRecipe.authorUsername || targetRecipe.sourceAuthor || 'comunidade',
+          isPublic: false
+        };
+        allRecipes = [clonedRecipe, ...allRecipes];
+        CacheManager.set(CacheManager.KEYS.MY_RECIPES, allRecipes);
+      }
+
+      showToast('🎉 Receita salva no seu caderno!', 'success', 2200);
+
+      // 2. Requisição em background
       try {
         const res = await fetch(`/api/recipes/${recipeId}/fork`, {
           method: 'POST',
           headers: authHeaders()
         });
+
         if (res.ok) {
-          alert('🎉 Receita puxada com sucesso para "Minhas Receitas"!');
-          if (activeTab === 'explore') fetchExploreRecipes();
+          const freshCreated = await res.json().catch(() => null);
+          if (freshCreated && freshCreated.id) {
+            // Substitui o clone temporário pelo objeto real retornado pela API
+            allRecipes = allRecipes.map(r => (r.id < 0 ? freshCreated : r));
+            CacheManager.set(CacheManager.KEYS.MY_RECIPES, allRecipes);
+          }
         } else {
-          const data = await res.json();
-          alert(data.error || 'Não foi possível puxar a receita.');
+          const data = await res.json().catch(() => ({}));
+          rollbackForkState(recipeId, btn, prevBtnHtml, btnDetail, forkCountEl, prevCount);
+          showToast(data.error || 'Não foi possível puxar a receita.', 'error', 3000);
         }
       } catch (e) {
-        alert('Erro de conexão ao duplicar receita.');
+        rollbackForkState(recipeId, btn, prevBtnHtml, btnDetail, forkCountEl, prevCount);
+        showToast('Falha na conexão ao salvar receita.', 'error', 3000);
       }
+    }
+
+    function rollbackForkState(recipeId, btn, prevBtnHtml, btnDetail, countEl, prevCount) {
+      if (btn && prevBtnHtml) {
+        btn.disabled = false;
+        btn.className = "px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-200 shadow-sm";
+        btn.innerHTML = prevBtnHtml;
+      }
+      if (btnDetail) {
+        btnDetail.disabled = false;
+        btnDetail.className = "flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl flex items-center justify-center gap-2 shadow-sm transition";
+        btnDetail.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i> Puxar para Minhas Receitas`;
+      }
+      if (countEl && prevCount !== null) {
+        countEl.innerText = prevCount;
+      }
+      // Remove do cache/lista local o item temporário adicionado
+      allRecipes = allRecipes.filter(r => r.id > 0);
+      CacheManager.set(CacheManager.KEYS.MY_RECIPES, allRecipes);
+      lucide.createIcons();
     }
 
     function forkSelectedRecipe() {
       if (selectedRecipe) {
         forkRecipe(selectedRecipe.id);
-        closeDetailsModal();
+        setTimeout(() => closeDetailsModal(), 600);
       }
     }
 
-    // 4. ALTERNAR VISIBILIDADE (PÚBLICA / PRIVADA)
+    // 4. ALTERNAR VISIBILIDADE (PÚBLICA / PRIVADA) OTIMISTA
     async function toggleRecipeVisibility(recipeId, event) {
       if (event) event.stopPropagation();
+      
+      // Encontra a receita na memória
+      const recipe = allRecipes.find(r => r.id === recipeId);
+      const prevPublicState = recipe ? (recipe.isPublic !== false) : true;
+      const nextPublicState = !prevPublicState;
+
+      // 1. Atualização Otimista Imediata (0ms)
+      if (recipe) {
+        recipe.isPublic = nextPublicState;
+        CacheManager.set(CacheManager.KEYS.MY_RECIPES, allRecipes);
+      }
+
+      // Atualiza botão no card da lista
+      const badgeBtn = document.getElementById(`vis-badge-${recipeId}`);
+      if (badgeBtn) {
+        badgeBtn.className = `action-btn px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 transition ${nextPublicState ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-neutral-100 text-neutral-600 border border-neutral-200'}`;
+        badgeBtn.innerHTML = `
+          <i data-lucide="${nextPublicState ? 'globe' : 'lock'}" class="w-3 h-3"></i>
+          <span>${nextPublicState ? 'Pública' : 'Privada'}</span>
+        `;
+      }
+
+      // Se o modal de detalhes estiver aberto com essa receita
+      if (selectedRecipe && selectedRecipe.id === recipeId) {
+        selectedRecipe.isPublic = nextPublicState;
+        const detailBadge = document.getElementById('detail-visibility-badge');
+        if (detailBadge) {
+          detailBadge.innerText = nextPublicState ? '🌐 Pública' : '🔒 Privada';
+          detailBadge.className = `px-2 py-0.5 rounded-md text-xs font-bold ${nextPublicState ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-100 text-neutral-600'}`;
+        }
+      }
+      lucide.createIcons();
+
+      showToast(nextPublicState ? 'Receita agora está Pública na comunidade 🌐' : 'Receita definida como Privada 🔒', 'info', 2000);
+
+      // 2. Requisição em background
       try {
         const res = await fetch(`/api/recipes/${recipeId}/visibility`, {
           method: 'PATCH',
           headers: authHeaders()
         });
-        if (res.ok) {
-          fetchRecipes();
-        } else {
-          alert('Erro ao alterar visibilidade.');
+
+        if (!res.ok) {
+          // 3. Rollback
+          rollbackVisibility(recipeId, prevPublicState);
+          showToast('Erro ao atualizar visibilidade. Revertendo...', 'error', 3000);
         }
       } catch (e) {
-        alert('Erro ao se conectar ao servidor.');
+        // Rollback
+        rollbackVisibility(recipeId, prevPublicState);
+        showToast('Falha na rede. Visibilidade restaurada.', 'error', 3000);
       }
+    }
+
+    function rollbackVisibility(recipeId, originalState) {
+      const recipe = allRecipes.find(r => r.id === recipeId);
+      if (recipe) {
+        recipe.isPublic = originalState;
+        CacheManager.set(CacheManager.KEYS.MY_RECIPES, allRecipes);
+      }
+      const badgeBtn = document.getElementById(`vis-badge-${recipeId}`);
+      if (badgeBtn) {
+        badgeBtn.className = `action-btn px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 transition ${originalState ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-neutral-100 text-neutral-600 border border-neutral-200'}`;
+        badgeBtn.innerHTML = `
+          <i data-lucide="${originalState ? 'globe' : 'lock'}" class="w-3 h-3"></i>
+          <span>${originalState ? 'Pública' : 'Privada'}</span>
+        `;
+      }
+      if (selectedRecipe && selectedRecipe.id === recipeId) {
+        selectedRecipe.isPublic = originalState;
+        const detailBadge = document.getElementById('detail-visibility-badge');
+        if (detailBadge) {
+          detailBadge.innerText = originalState ? '🌐 Pública' : '🔒 Privada';
+          detailBadge.className = `px-2 py-0.5 rounded-md text-xs font-bold ${originalState ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-100 text-neutral-600'}`;
+        }
+      }
+      lucide.createIcons();
     }
 
     // 5. ABA MINHAS RECEITAS (Caderno Pessoal com SWR e Instant Boot)
@@ -1105,9 +1325,9 @@
                 </span>
                 
                 <!-- Badge de Visibilidade Clicável -->
-                <button onclick="toggleRecipeVisibility(${r.id}, event)" class="action-btn px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 transition ${isPub ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-neutral-100 text-neutral-600 border border-neutral-200'}" title="Clique para alternar">
+                <button id="vis-badge-${r.id}" onclick="toggleRecipeVisibility(${r.id}, event)" class="action-btn px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 transition ${isPub ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-neutral-100 text-neutral-600 border border-neutral-200'}" title="Clique para alternar">
                   <i data-lucide="${isPub ? 'globe' : 'lock'}" class="w-3 h-3"></i>
-                  ${isPub ? 'Pública' : 'Privada'}
+                  <span>${isPub ? 'Pública' : 'Privada'}</span>
                 </button>
               </div>
 
@@ -1414,7 +1634,7 @@
         btn.classList.add('pulse-record');
         status.innerText = 'Gravando... Fale os ingredientes e passos com clareza!';
       } catch (e) {
-        alert('Permissão de microfone negada ou não suportada.');
+        showToast('Permissão de microfone negada ou não suportada.', 'error');
       }
     }
 
@@ -1446,12 +1666,13 @@
         const data = await res.json();
         if (res.ok) {
           closeAddModal();
+          showToast('Receita transcrita e criada com sucesso! 🍲', 'success');
           fetchRecipes();
         } else {
-          alert(data.error || 'Erro ao processar áudio.');
+          showToast(data.error || 'Erro ao processar áudio.', 'error');
         }
       } catch (e) {
-        alert('Erro ao se conectar com a IA.');
+        showToast('Erro ao se conectar com a IA.', 'error');
       } finally {
         setAiProcessing(false);
       }
@@ -1471,12 +1692,13 @@
         const data = await res.json();
         if (res.ok) {
           closeAddModal();
+          showToast('Receita extraída e salva com sucesso! 📝', 'success');
           fetchRecipes();
         } else {
-          alert(data.error || 'Erro ao extrair receita.');
+          showToast(data.error || 'Erro ao extrair receita.', 'error');
         }
       } catch (e) {
-        alert('Erro ao se conectar com o servidor.');
+        showToast('Erro ao se conectar com o servidor.', 'error');
       } finally {
         setAiProcessing(false);
       }
@@ -1536,12 +1758,13 @@
         });
         if (res.ok) {
           closeEditModal();
+          showToast('Receita atualizada com sucesso! ✨', 'success');
           fetchRecipes();
         } else {
-          alert('Erro ao atualizar receita.');
+          showToast('Erro ao atualizar receita.', 'error');
         }
       } catch (err) {
-        alert('Erro ao se conectar ao servidor.');
+        showToast('Erro ao se conectar ao servidor.', 'error');
       }
     }
 
@@ -1553,12 +1776,13 @@
           headers: authHeaders()
         });
         if (res.ok) {
+          showToast('Receita removida do caderno.', 'info');
           fetchRecipes();
         } else {
-          alert('Erro ao excluir receita.');
+          showToast('Erro ao excluir receita.', 'error');
         }
       } catch (e) {
-        alert('Erro ao excluir receita.');
+        showToast('Erro ao excluir receita.', 'error');
       }
     }
 

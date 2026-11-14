@@ -49,6 +49,25 @@ public class DatabaseMigrationConfig {
                     ");"
                 );
 
+                // 5. Garantir campos sociais em recipes (is_public, forked_from_username, fork_count)
+                jdbcTemplate.execute(
+                    "ALTER TABLE recipes ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE;"
+                );
+                jdbcTemplate.execute(
+                    "ALTER TABLE recipes ADD COLUMN IF NOT EXISTS forked_from_username VARCHAR(50);"
+                );
+                jdbcTemplate.execute(
+                    "ALTER TABLE recipes ADD COLUMN IF NOT EXISTS fork_count BIGINT NOT NULL DEFAULT 0;"
+                );
+
+                // 6. Garantir tabela de tags para receitas (recipe_tags)
+                jdbcTemplate.execute(
+                    "CREATE TABLE IF NOT EXISTS recipe_tags (" +
+                    "  recipe_id BIGINT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE," +
+                    "  tag VARCHAR(50) NOT NULL" +
+                    ");"
+                );
+
                 log.info("Migração defensiva concluída com sucesso no PostgreSQL!");
             } catch (Exception e) {
                 log.warn("Nota na migração de schema: {}", e.getMessage());

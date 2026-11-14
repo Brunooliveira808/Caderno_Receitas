@@ -24,6 +24,7 @@ class RecipeServiceUpdatePersistenceTest {
 
     private RecipeRepository recipeRepository;
     private UserRepository userRepository;
+    private ChefBot_Telegram.repository.AppUserRepository appUserRepository;
     private RecipeService recipeService;
 
     private static final Long CHAT_ID = 555L;
@@ -33,7 +34,8 @@ class RecipeServiceUpdatePersistenceTest {
     void setUp() {
         recipeRepository = Mockito.mock(RecipeRepository.class);
         userRepository = Mockito.mock(UserRepository.class);
-        recipeService = new RecipeService(userRepository, recipeRepository);
+        appUserRepository = Mockito.mock(ChefBot_Telegram.repository.AppUserRepository.class);
+        recipeService = new RecipeService(userRepository, recipeRepository, appUserRepository);
     }
 
     private Recipe createExistingRecipe() {

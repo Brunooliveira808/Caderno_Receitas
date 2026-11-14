@@ -228,6 +228,52 @@ public class RecipeController {
         return ResponseEntity.notFound().build();
     }
 
+    /**
+     * Alterna a visibilidade (pública / privada) de uma receita do usuário.
+     */
+    @PatchMapping("/{id}/visibility")
+    public ResponseEntity<?> toggleVisibility(
+            @AuthenticationPrincipal AppUser user,
+            @PathVariable Long id) {
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        User recipeUser = userService.getOrCreateRecipeUser(user);
+        try {
+            Recipe updated = recipeService.toggleVisibility(recipeUser.getTelegramChatId(), id);
+            return ResponseEntity.ok(toDTO(updated));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Erro ao alterar visibilidade da receita #{}: ", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Clona/Fork uma receita pública para a coleção pessoal (Minhas Receitas) do usuário autenticado.
+     */
+    @PostMapping("/{id}/fork")
+    public ResponseEntity<?> forkRecipe(
+            @AuthenticationPrincipal AppUser user,
+            @PathVariable Long id) {
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        User recipeUser = userService.getOrCreateRecipeUser(user);
+        try {
+            Recipe forked = recipeService.forkRecipe(recipeUser, id);
+            return ResponseEntity.status(HttpStatus.CREATED).body(toDTO(forked));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Erro ao duplicar receita #{}: ", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
     private RecipeWebDTO toDTO(Recipe recipe) {
         List<IngredientDTO> ings = recipe.getIngredients().stream()
             .map(i -> new IngredientDTO(i.getName(), i.getQuantity(), i.getUnit(), i.getNotes()))
@@ -237,6 +283,8 @@ public class RecipeController {
             .map(i -> new InstructionDTO(i.getStepNumber(), i.getInstructionText()))
             .collect(Collectors.toList());
 
+        String author = recipeService.resolveAuthorUsername(recipe);
+
         return new RecipeWebDTO(
             recipe.getId(),
             recipe.getTitle(),
@@ -245,6 +293,11 @@ public class RecipeController {
             recipe.getPrepTimeMinutes(),
             recipe.getPortions(),
             recipe.getRawTranscript(),
+            recipe.isPublic(),
+            author,
+            recipe.getForkedFromUsername(),
+            recipe.getForkCount(),
+            recipe.getTags(),
             ings,
             insts
         );

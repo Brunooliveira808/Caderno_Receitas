@@ -10,6 +10,11 @@ public record RecipeWebDTO(
     Integer prepTimeMinutes,
     Integer portions,
     String rawTranscript,
+    Boolean isPublic,
+    String authorUsername,
+    String forkedFromUsername,
+    Long forkCount,
+    List<String> tags,
     List<IngredientDTO> ingredients,
     List<InstructionDTO> instructions
 ) {}

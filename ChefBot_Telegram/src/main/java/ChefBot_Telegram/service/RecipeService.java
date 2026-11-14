@@ -32,10 +32,19 @@ public class RecipeService {
 
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
+    private final ChefBot_Telegram.repository.AppUserRepository appUserRepository;
 
     public RecipeService(UserRepository userRepository, RecipeRepository recipeRepository) {
+        this(userRepository, recipeRepository, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public RecipeService(UserRepository userRepository,
+                         RecipeRepository recipeRepository,
+                         ChefBot_Telegram.repository.AppUserRepository appUserRepository) {
         this.userRepository = userRepository;
         this.recipeRepository = recipeRepository;
+        this.appUserRepository = appUserRepository;
     }
 
     /**
@@ -102,6 +111,12 @@ public class RecipeService {
         recipe.setSourceAuthor(dto.sourceAuthor());
         recipe.setPrepTimeMinutes(dto.prepTimeMinutes());
         recipe.setPortions(dto.portions());
+        if (dto.isPublic() != null) {
+            recipe.setPublic(dto.isPublic());
+        }
+        if (dto.tags() != null) {
+            recipe.setTags(new ArrayList<>(dto.tags()));
+        }
 
         // Prioriza a transcrição real se o rawTranscript fornecido for apenas genérico
         if (dto.transcription() != null && !dto.transcription().isBlank()) {
@@ -161,6 +176,12 @@ public class RecipeService {
         }
         if (dto.portions() != null) {
             recipe.setPortions(dto.portions() > 0 ? dto.portions() : null);
+        }
+        if (dto.isPublic() != null) {
+            recipe.setPublic(dto.isPublic());
+        }
+        if (dto.tags() != null) {
+            recipe.setTags(new ArrayList<>(dto.tags()));
         }
 
         // Atualizar Ingredientes com salvaguarda de integridade
@@ -510,6 +531,12 @@ public class RecipeService {
         if (dto.portions() != null) {
             recipe.setPortions(dto.portions() > 0 ? dto.portions() : null);
         }
+        if (dto.isPublic() != null) {
+            recipe.setPublic(dto.isPublic());
+        }
+        if (dto.tags() != null) {
+            recipe.setTags(new ArrayList<>(dto.tags()));
+        }
 
         if (dto.ingredients() != null) {
             recipe.getIngredients().clear();
@@ -540,6 +567,103 @@ public class RecipeService {
         }
 
         return recipeRepository.saveAndFlush(recipe);
+    }
+
+    /**
+     * Alterna a visibilidade (pública / privada) de uma receita.
+     * Somente o proprietário da receita pode alternar.
+     */
+    @Transactional
+    public Recipe toggleVisibility(Long telegramChatId, Long recipeId) {
+        Recipe recipe = recipeRepository.findByUserTelegramChatIdAndId(telegramChatId, recipeId)
+            .orElseThrow(() -> new IllegalArgumentException("Receita não encontrada para este usuário."));
+
+        recipe.setPublic(!recipe.isPublic());
+        return recipeRepository.save(recipe);
+    }
+
+    /**
+     * Duplica (fork) uma receita pública para a coleção pessoal do usuário autenticado.
+     * Incrementa o contador forkCount da receita original e define forkedFromUsername.
+     */
+    @Transactional
+    public Recipe forkRecipe(User targetUser, Long sourceRecipeId) {
+        Recipe sourceRecipe = recipeRepository.findById(sourceRecipeId)
+            .orElseThrow(() -> new IllegalArgumentException("Receita não encontrada com ID: " + sourceRecipeId));
+
+        if (!sourceRecipe.isPublic()) {
+            throw new IllegalStateException("Esta receita é privada e não pode ser duplicada.");
+        }
+
+        // Incrementa o forkCount da receita original
+        sourceRecipe.setForkCount(sourceRecipe.getForkCount() + 1);
+        recipeRepository.save(sourceRecipe);
+
+        // Identifica o username do autor original
+        String originalAuthorUsername = resolveAuthorUsername(sourceRecipe);
+
+        // Cria a cópia independente
+        Recipe fork = new Recipe();
+        fork.setUser(targetUser);
+        fork.setTitle(sourceRecipe.getTitle());
+        fork.setCategory(sourceRecipe.getCategory());
+        fork.setSourceAuthor(sourceRecipe.getSourceAuthor());
+        fork.setPrepTimeMinutes(sourceRecipe.getPrepTimeMinutes());
+        fork.setPortions(sourceRecipe.getPortions());
+        fork.setRawTranscript(sourceRecipe.getRawTranscript());
+        fork.setPublic(true);
+        fork.setForkedFromUsername(originalAuthorUsername);
+        fork.setForkCount(0);
+        fork.setTags(new ArrayList<>(sourceRecipe.getTags()));
+
+        // Clona ingredientes
+        for (Ingredient originalIng : sourceRecipe.getIngredients()) {
+            Ingredient newIng = new Ingredient();
+            newIng.setName(originalIng.getName());
+            newIng.setQuantity(originalIng.getQuantity());
+            newIng.setUnit(originalIng.getUnit());
+            newIng.setNotes(originalIng.getNotes());
+            fork.addIngredient(newIng);
+        }
+
+        // Clona passos de instrução
+        for (Instruction originalInst : sourceRecipe.getInstructions()) {
+            Instruction newInst = new Instruction();
+            newInst.setStepNumber(originalInst.getStepNumber());
+            newInst.setInstructionText(originalInst.getInstructionText());
+            fork.addInstruction(newInst);
+        }
+
+        return recipeRepository.save(fork);
+    }
+
+    /**
+     * Descobre o username do criador da receita.
+     */
+    public String resolveAuthorUsername(Recipe recipe) {
+        if (recipe == null || recipe.getUser() == null) {
+            return null;
+        }
+        if (appUserRepository == null) {
+            return recipe.getUser().getName();
+        }
+        Long chatId = recipe.getUser().getTelegramChatId();
+        if (chatId == null) {
+            return recipe.getUser().getName();
+        }
+
+        // Se for um id virtual de usuário web (-1000000000 - appUserId)
+        if (chatId <= -1000000000L) {
+            Long appUserId = -chatId - 1000000000L;
+            return appUserRepository.findById(appUserId)
+                .map(ChefBot_Telegram.model.AppUser::getUsername)
+                .orElse(recipe.getUser().getName());
+        }
+
+        // Caso contrário, busca por telegramChatId
+        return appUserRepository.findByTelegramChatId(chatId)
+            .map(ChefBot_Telegram.model.AppUser::getUsername)
+            .orElse(recipe.getUser().getName());
     }
 }
 

@@ -8,6 +8,8 @@ public record RecipeUpdateRequestDTO(
     String sourceAuthor,
     Integer prepTimeMinutes,
     Integer portions,
+    Boolean isPublic,
+    List<String> tags,
     List<IngredientDTO> ingredients,
     List<InstructionDTO> instructions
 ) {}

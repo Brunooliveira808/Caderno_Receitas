@@ -317,27 +317,27 @@
     </section>
 
     <!-- ============================================================== -->
-    <!-- BARRA FIXA INFERIOR (BOTTOM NAVIGATION BAR ESTILO INSTAGRAM)    -->
+    <!-- BARRA FIXA INFERIOR (BOTTOM NAVIGATION BAR AMARELA COM ITENS BRANCOS) -->
     <!-- ============================================================== -->
-    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-neutral-200/80 px-6 py-2.5 flex items-center justify-between z-40 safe-bottom shadow-lg">
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-amber-400 border-t border-amber-300 px-6 py-2.5 flex items-center justify-between z-40 safe-bottom shadow-xl">
       
       <!-- 1. Explorar (Esquerda) -->
-      <button onclick="switchTab('explore')" id="nav-btn-explore" class="nav-tab flex flex-col items-center gap-1 text-neutral-400 hover:text-amber-600 transition flex-1">
+      <button onclick="switchTab('explore')" id="nav-btn-explore" class="nav-tab flex flex-col items-center gap-1 text-white/80 hover:text-white transition flex-1">
         <i data-lucide="compass" class="w-6 h-6"></i>
         <span class="text-[10px] font-bold">Explorar</span>
       </button>
 
       <!-- 2. Minhas Receitas (Centro) -->
-      <button onclick="switchTab('my-recipes')" id="nav-btn-my-recipes" class="nav-tab flex flex-col items-center gap-1 text-amber-600 transition flex-1 font-bold">
+      <button onclick="switchTab('my-recipes')" id="nav-btn-my-recipes" class="nav-tab flex flex-col items-center gap-1 text-white transition flex-1 font-extrabold scale-105">
         <div class="relative">
           <i data-lucide="book-open" class="w-6 h-6"></i>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-500 absolute -top-0.5 -right-0.5"></span>
+          <span class="w-2 h-2 rounded-full bg-white absolute -top-0.5 -right-0.5 shadow-sm"></span>
         </div>
-        <span class="text-[10px] font-bold">Minhas Receitas</span>
+        <span class="text-[10px] font-extrabold tracking-wide">Minhas Receitas</span>
       </button>
 
       <!-- 3. Meu Perfil (Direita) -->
-      <button onclick="switchTab('profile')" id="nav-btn-profile" class="nav-tab flex flex-col items-center gap-1 text-neutral-400 hover:text-amber-600 transition flex-1">
+      <button onclick="switchTab('profile')" id="nav-btn-profile" class="nav-tab flex flex-col items-center gap-1 text-white/80 hover:text-white transition flex-1">
         <i data-lucide="user" class="w-6 h-6"></i>
         <span class="text-[10px] font-bold">Meu Perfil</span>
       </button>
@@ -678,26 +678,26 @@
       tabMyRecipes.classList.add('hidden');
       tabProfile.classList.add('hidden');
 
-      // Reseta classes nos botões
+      // Reseta classes nos botões para a barra amarela com itens brancos
       [navBtnExplore, navBtnMyRecipes, navBtnProfile].forEach(btn => {
-        btn.className = "nav-tab flex flex-col items-center gap-1 text-neutral-400 hover:text-amber-600 transition flex-1";
+        btn.className = "nav-tab flex flex-col items-center gap-1 text-white/70 hover:text-white transition flex-1";
       });
 
       if (tab === 'explore') {
         tabExplore.classList.remove('hidden');
-        navBtnExplore.className = "nav-tab flex flex-col items-center gap-1 text-amber-600 transition flex-1 font-bold";
+        navBtnExplore.className = "nav-tab flex flex-col items-center gap-1 text-white transition flex-1 font-extrabold scale-105";
         titleEl.innerHTML = `Explorar <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>`;
         subtitleEl.innerText = "Descubra receitas e chefs da comunidade";
         fetchExploreRecipes();
       } else if (tab === 'my-recipes') {
         tabMyRecipes.classList.remove('hidden');
-        navBtnMyRecipes.className = "nav-tab flex flex-col items-center gap-1 text-amber-600 transition flex-1 font-bold";
+        navBtnMyRecipes.className = "nav-tab flex flex-col items-center gap-1 text-white transition flex-1 font-extrabold scale-105";
         titleEl.innerHTML = `Minhas Receitas <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>`;
         subtitleEl.innerText = "Seu acervo culinário pessoal";
         fetchRecipes();
       } else if (tab === 'profile') {
         tabProfile.classList.remove('hidden');
-        navBtnProfile.className = "nav-tab flex flex-col items-center gap-1 text-amber-600 transition flex-1 font-bold";
+        navBtnProfile.className = "nav-tab flex flex-col items-center gap-1 text-white transition flex-1 font-extrabold scale-105";
         titleEl.innerHTML = `Meu Perfil <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>`;
         subtitleEl.innerText = "Sua conta e estatísticas culinárias";
         loadUserProfile();

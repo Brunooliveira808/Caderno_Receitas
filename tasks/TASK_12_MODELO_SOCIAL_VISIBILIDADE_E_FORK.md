@@ -1,44 +1,47 @@
-# TASK 12: Modelo de Dados Social, Visibilidade e Fork de Receitas
+# TASK 12: Modelo de Dados Social, Visibilidade, Tags e Fork de Receitas
 
 ## 📌 Contexto & Objetivo
-Evoluir o modelo de dados de receitas e usuários para transformar o ChefBot em uma rede social culinária (PWA First), permitindo que receitas sejam públicas ou privadas e possam ser clonadas ("puxadas para o caderno") como snapshots independentes.
+Evoluir o modelo de dados de receitas no backend para permitir controle de visibilidade (pública/privada), tags de destaque e a funcionalidade de duplicar (fork) receitas para o caderno pessoal "Minhas Receitas".
 
 ---
 
 ## 🛠️ Especificações Técnicas
 
-### 1. Alterações na Entidade `Recipe`
+### 1. Entidade `Recipe`
 - **Campo `isPublic` (boolean):**
-  - Define se a receita aparece no feed e buscas da comunidade (`true`) ou apenas no caderno pessoal do autor (`false`). Padrão: `true`.
-- **Campo `forkedFromUsername` (varchar 50, nullable):**
-  - Armazena o `@username` do criador original quando a receita foi clonada a partir de outro chef.
+  - Define se a receita aparece na aba Explorar. Padrão: `true`.
+- **Campo `forkedFromUsername` (String, max 50):**
+  - Armazena o `@username` do criador original quando a receita for clonada.
+- **Campo `forkCount` (long):**
+  - Contador de quantas vezes esta receita foi salva por outros usuários. Padrão: `0`.
+- **Coleção de Tags (`tags`):**
+  - `@ElementCollection` de `String` (ex: `["Vegano", "Rápida", "Sem Glúten"]`).
 - **Migração defensiva:**
-  - Atualizar [`DatabaseMigrationConfig.java`](file:///home/bruno/meusProjetos/ChefBot_Telegram/ChefBot_Telegram/src/main/java/ChefBot_Telegram/config/DatabaseMigrationConfig.java) para executar `ALTER TABLE recipes ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE;` e `ALTER TABLE recipes ADD COLUMN IF NOT EXISTS forked_from_username VARCHAR(50);`.
+  - Adicionar colunas e tabela de tags no [`DatabaseMigrationConfig.java`](file:///home/bruno/meusProjetos/ChefBot_Telegram/ChefBot_Telegram/src/main/java/ChefBot_Telegram/config/DatabaseMigrationConfig.java).
 
 ### 2. DTOs
-- Atualizar [`RecipeResponseDTO.java`](file:///home/bruno/meusProjetos/ChefBot_Telegram/ChefBot_Telegram/src/main/java/ChefBot_Telegram/dto/RecipeResponseDTO.java) e [`RecipeWebDTO.java`](file:///home/bruno/meusProjetos/ChefBot_Telegram/ChefBot_Telegram/src/main/java/ChefBot_Telegram/dto/RecipeWebDTO.java) para conter:
+- Atualizar `RecipeResponseDTO` e `RecipeWebDTO` com:
   - `Boolean isPublic`
-  - `String authorUsername` (autor da receita)
-  - `String forkedFromUsername` (se foi inspirada/clonada)
+  - `String authorUsername`
+  - `String forkedFromUsername`
+  - `Long forkCount`
+  - `List<String> tags`
 
 ### 3. Regras de Negócio em `RecipeService`
-- **Método `toggleVisibility(Long userId, Long recipeId)`:**
-  - Inverte o status de `isPublic` (autorizada apenas pelo dono da receita).
-- **Método `forkRecipe(AppUser currentUser, Long recipeId)`:**
+- **`forkRecipe(AppUser currentUser, Long recipeId)`:**
   - Busca a receita pública alvo.
-  - Valida se é pública (ou pertence a outro usuário).
-  - Cria uma nova instância de `Recipe` associada ao `currentUser`.
-  - Duplica ingredientes e instruções em snapshot limpo.
-  - Define `forkedFromUsername` com o `@username` do autor da receita original.
-  - Salva no banco e retorna o DTO da nova receita no caderno do usuário atual.
+  - Incrementa `forkCount` na receita original.
+  - Cria cópia independente para `currentUser` com `forkedFromUsername = autorOriginal`.
+- **`toggleVisibility(Long userId, Long recipeId)`:**
+  - Alterna entre público e privado (apenas o dono pode alterar).
 
 ### 4. Endpoints REST em `RecipeController`
-- `PATCH /api/recipes/{id}/visibility`: Alterna visibilidade pública/privada.
-- `POST /api/recipes/{id}/fork`: Realiza a cópia da receita para o perfil do usuário logado.
+- `POST /api/recipes/{id}/fork`: Duplica receita pública para Minhas Receitas.
+- `PATCH /api/recipes/{id}/visibility`: Alterna público/privado.
 
 ---
 
 ## ✅ Critérios de Aceite
-- [ ] Colunas criadas no PostgreSQL sem quebrar dados existentes.
-- [ ] Testes de unidade cobrindo o fork com duplicata independente (se o autor original deletar a receita, a receita clonada continua intacta).
-- [ ] Teste de autorização garantindo que apenas o dono pode alternar a visibilidade da própria receita.
+- [ ] Colunas e tabela de tags criadas no PostgreSQL sem perda de dados.
+- [ ] Teste unitário do `fork` verificando isolamento e incremento do contador.
+- [ ] Validação de segurança: apenas receitas públicas podem ser clonadas por terceiros.

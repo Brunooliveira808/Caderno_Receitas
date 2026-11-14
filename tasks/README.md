@@ -21,9 +21,10 @@ Este diretório contém o plano completo, detalhado e modular de correções e m
 | [TASK_09_AUTENTICACAO_SPRING_SECURITY_JWT.md](file:///home/bruno/meusProjetos/ChefBot_Telegram/tasks/TASK_09_AUTENTICACAO_SPRING_SECURITY_JWT.md) | **Autenticação & JWT** | Spring Security, login/registro, tokens JWT e proteção das rotas REST |
 | [TASK_10_MULTITENANT_SINCRONIZACAO_TELEGRAM.md](file:///home/bruno/meusProjetos/ChefBot_Telegram/tasks/TASK_10_MULTITENANT_SINCRONIZACAO_TELEGRAM.md) | **Multi-tenant & Sincronização** | Isolamento por usuário e vínculo de caderno entre Web/App e Telegram (`/vincular`) |
 | [TASK_11_CONTAINER_POSTGRES_DEPLOY_NUVEM.md](file:///home/bruno/meusProjetos/ChefBot_Telegram/tasks/TASK_11_CONTAINER_POSTGRES_DEPLOY_NUVEM.md) | **Deploy em Nuvem & PostgreSQL** | Dockerfile, profile de produção e deploy gratuito em nuvem (Render/Railway) |
-| [TASK_12_MODELO_SOCIAL_VISIBILIDADE_E_FORK.md](file:///home/bruno/meusProjetos/ChefBot_Telegram/tasks/TASK_12_MODELO_SOCIAL_VISIBILIDADE_E_FORK.md) | **Visibilidade & Fork de Receitas** | Campo `isPublic`, duplicação independente de receitas para o caderno e autoria |
+| [TASK_12_MODELO_SOCIAL_VISIBILIDADE_E_FORK.md](file:///home/bruno/meusProjetos/ChefBot_Telegram/tasks/TASK_12_MODELO_SOCIAL_VISIBILIDADE_E_FORK.md) | **Visibilidade, Tags & Fork** | Campo `isPublic`, tags de dieta/tempo, clone independente e contagem de forks |
 | [TASK_13_SISTEMA_DE_SEGUIDORES_E_PERFIS.md](file:///home/bruno/meusProjetos/ChefBot_Telegram/tasks/TASK_13_SISTEMA_DE_SEGUIDORES_E_PERFIS.md) | **Seguidores & Perfis de Chefs** | Grafo social (seguir/deixar de seguir), contadores e busca de chefs (@username) |
-| [TASK_14_PWA_BOTTOM_NAVIGATION_ESTILO_INSTAGRAM.md](file:///home/bruno/meusProjetos/ChefBot_Telegram/tasks/TASK_14_PWA_BOTTOM_NAVIGATION_ESTILO_INSTAGRAM.md) | **PWA Bottom Bar Estilo Instagram** | Barra inferior com 3 abas (Explorar, Caderno com [+], Perfil) e ação de clonar |
+| [TASK_14_PWA_BOTTOM_NAVIGATION_ESTILO_INSTAGRAM.md](file:///home/bruno/meusProjetos/ChefBot_Telegram/tasks/TASK_14_PWA_BOTTOM_NAVIGATION_ESTILO_INSTAGRAM.md) | **PWA Bottom Bar Estilo Instagram** | Barra inferior com 3 abas (Explorar, Minhas Receitas com [+], Perfil) e ação de clonar |
+| [TASK_15_MODO_COZINHA_E_COMPARTILHAMENTO.md](file:///home/bruno/meusProjetos/ChefBot_Telegram/tasks/TASK_15_MODO_COZINHA_E_COMPARTILHAMENTO.md) | **Modo Cozinha & Compartilhamento** | Tela sempre ativa (WakeLock), checklist de ingredientes e compartilhamento nativo |
 
 ---
 

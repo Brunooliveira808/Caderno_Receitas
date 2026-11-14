@@ -21,6 +21,9 @@ public class AppUser {
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
+    @Column(nullable = false, unique = true, length = 50)
+    private String username;
+
     @Column(nullable = false)
     private String passwordHash;
 
@@ -49,6 +52,16 @@ public class AppUser {
 
     public AppUser(String email, String passwordHash, String name) {
         this.email = email;
+        this.username = (email != null && email.contains("@")) ? email.substring(0, email.indexOf('@')).replaceAll("[^a-z0-9_.]", "") : "chef" + System.currentTimeMillis();
+        this.passwordHash = passwordHash;
+        this.name = name;
+        this.role = "ROLE_USER";
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public AppUser(String email, String username, String passwordHash, String name) {
+        this.email = email;
+        this.username = username;
         this.passwordHash = passwordHash;
         this.name = name;
         this.role = "ROLE_USER";

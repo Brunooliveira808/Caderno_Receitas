@@ -444,16 +444,11 @@
               <span id="logged-user-telegram" class="font-semibold text-neutral-800">Não vinculado</span>
             </div>
 
-            <!-- Área de Vinculação com o Telegram -->
-            <div id="link-code-section" class="mt-3 pt-3 border-t border-neutral-200/60">
-              <button onclick="requestLinkCode()" id="btn-request-link" class="w-full py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5">
-                <i data-lucide="link" class="w-3.5 h-3.5"></i>
-                <span>Sincronizar com Telegram</span>
-              </button>
-              <div id="link-code-display" class="hidden mt-2 p-3 bg-amber-50 rounded-xl text-center border border-amber-200">
-                <p class="text-[11px] text-neutral-600 mb-1">Envie este comando no bot do Telegram:</p>
-                <code id="link-code-text" class="text-sm font-black text-amber-900 select-all tracking-wider font-mono"></code>
-                <p class="text-[10px] text-amber-700 mt-1">Válido por 15 minutos</p>
+            <!-- Perfil Info -->
+            <div class="mt-3 pt-3 border-t border-neutral-200/60">
+              <div class="flex items-center justify-between text-xs text-neutral-700">
+                <span>Nome de Usuário:</span>
+                <span id="auth-current-username" class="font-bold text-amber-700">@usuario</span>
               </div>
             </div>
           </div>
@@ -464,32 +459,60 @@
           </button>
         </div>
 
-        <!-- Visão 2: Formulário de Login / Registro -->
+        <!-- Visão 2: Formulário de Login / Registro / Esqueci Senha -->
         <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="flex flex-col gap-3">
           <div id="auth-name-container" class="hidden">
             <label class="block text-xs font-bold mb-1 text-neutral-700">Seu Nome</label>
             <input type="text" id="auth-name" placeholder="Ex: Chef Bruno" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
           </div>
 
-          <div>
-            <label class="block text-xs font-bold mb-1 text-neutral-700">E-mail</label>
-            <input type="email" id="auth-email" required placeholder="seu@email.com" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+          <div id="auth-username-container" class="hidden">
+            <label class="block text-xs font-bold mb-1 text-neutral-700">@Nome de Usuário (Username)</label>
+            <div class="relative">
+              <span class="absolute left-3 top-3 text-neutral-400 text-sm font-bold">@</span>
+              <input type="text" id="auth-username" placeholder="brunochef" class="w-full p-3 pl-8 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+            </div>
+            <p class="text-[10px] text-neutral-400 mt-1">Seu identificador único na comunidade.</p>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold mb-1 text-neutral-700">Senha</label>
-            <input type="password" id="auth-password" required minlength="6" placeholder="Mínimo 6 caracteres" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+          <div id="auth-email-container">
+            <label id="auth-email-label" class="block text-xs font-bold mb-1 text-neutral-700">E-mail ou @Username</label>
+            <input type="text" id="auth-email" required placeholder="seu@email.com ou @username" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+          </div>
+
+          <div id="auth-password-container">
+            <div class="flex items-center justify-between mb-1">
+              <label id="auth-password-label" class="block text-xs font-bold text-neutral-700">Senha</label>
+              <button type="button" onclick="setAuthMode('forgot')" id="btn-forgot-password-link" class="text-[11px] text-amber-700 hover:underline">
+                Esqueci minha senha
+              </button>
+            </div>
+            <input type="password" id="auth-password" minlength="6" placeholder="Mínimo 6 caracteres" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+          </div>
+
+          <div id="auth-confirm-password-container" class="hidden">
+            <label class="block text-xs font-bold mb-1 text-neutral-700">Confirme sua Senha</label>
+            <input type="password" id="auth-confirm-password" minlength="6" placeholder="Repita a senha digitada" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
+          </div>
+
+          <div id="auth-reset-token-container" class="hidden">
+            <label class="block text-xs font-bold mb-1 text-neutral-700">Código de Recuperação (Token)</label>
+            <input type="text" id="auth-reset-token" placeholder="Cole o código de 12 dígitos" class="w-full p-3 border border-neutral-200 rounded-xl text-sm uppercase font-mono focus:outline-none focus:border-amber-400">
           </div>
 
           <div id="auth-error-msg" class="hidden p-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-medium"></div>
+          <div id="auth-success-msg" class="hidden p-2.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-medium"></div>
 
           <button type="submit" id="btn-auth-submit" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl shadow-md transition flex items-center justify-center gap-2 mt-1">
             <span>Entrar</span>
           </button>
 
-          <div class="text-center mt-2">
+          <div class="text-center mt-2 flex flex-col gap-1.5">
             <button type="button" onclick="toggleAuthMode()" id="btn-auth-toggle" class="text-xs text-amber-700 hover:text-amber-800 font-medium">
               Não tem conta? Cadastre-se
+            </button>
+            <button type="button" onclick="setAuthMode('login')" id="btn-back-to-login" class="hidden text-xs text-neutral-500 hover:text-neutral-700 font-medium">
+              ← Voltar para o Login
             </button>
           </div>
         </form>
@@ -565,12 +588,9 @@
 
       if (currentUser) {
         document.getElementById('auth-modal-title').innerText = 'Minha Conta';
-        document.getElementById('logged-user-name').innerText = currentUser.name;
-        document.getElementById('logged-user-email').innerText = currentUser.email;
-        const tgLabel = currentUser.telegramChatId ? `Vinculado (#${currentUser.telegramChatId})` : 'Não vinculado';
-        document.getElementById('logged-user-telegram').innerText = tgLabel;
-        document.getElementById('link-code-section').classList.toggle('hidden', !!currentUser.telegramChatId);
-        document.getElementById('link-code-display').classList.add('hidden');
+        document.getElementById('logged-user-name').innerText = currentUser.name || 'Chef';
+        document.getElementById('logged-user-email').innerText = currentUser.email || '';
+        document.getElementById('auth-current-username').innerText = currentUser.username ? ('@' + currentUser.username) : '@chef';
         viewLogged.classList.remove('hidden');
         form.classList.add('hidden');
       } else {
@@ -591,50 +611,205 @@
       updateAuthModeUI();
     }
 
+    function setAuthMode(mode) {
+      authMode = mode;
+      updateAuthModeUI();
+    }
+
     function updateAuthModeUI() {
+      const errBox = document.getElementById('auth-error-msg');
+      const succBox = document.getElementById('auth-success-msg');
+      errBox.classList.add('hidden');
+      succBox.classList.add('hidden');
+
       const isLogin = authMode === 'login';
-      document.getElementById('auth-modal-title').innerText = isLogin ? 'Entrar no ChefBot' : 'Criar Nova Conta';
-      document.getElementById('auth-name-container').classList.toggle('hidden', isLogin);
-      document.getElementById('btn-auth-submit').querySelector('span').innerText = isLogin ? 'Entrar' : 'Cadastrar';
-      document.getElementById('btn-auth-toggle').innerText = isLogin 
-        ? 'Não tem conta? Cadastre-se' 
-        : 'Já possui uma conta? Faça login';
-      document.getElementById('auth-error-msg').classList.add('hidden');
+      const isRegister = authMode === 'register';
+      const isForgot = authMode === 'forgot';
+      const isReset = authMode === 'reset';
+
+      const titleEl = document.getElementById('auth-modal-title');
+      const nameCont = document.getElementById('auth-name-container');
+      const usernameCont = document.getElementById('auth-username-container');
+      const emailCont = document.getElementById('auth-email-container');
+      const emailLabel = document.getElementById('auth-email-label');
+      const emailInput = document.getElementById('auth-email');
+      const passCont = document.getElementById('auth-password-container');
+      const passLabel = document.getElementById('auth-password-label');
+      const confirmPassCont = document.getElementById('auth-confirm-password-container');
+      const resetTokenCont = document.getElementById('auth-reset-token-container');
+      const forgotLink = document.getElementById('btn-forgot-password-link');
+      const submitBtn = document.getElementById('btn-auth-submit').querySelector('span');
+      const toggleBtn = document.getElementById('btn-auth-toggle');
+      const backBtn = document.getElementById('btn-back-to-login');
+
+      // Reset visibilidades
+      nameCont.classList.add('hidden');
+      usernameCont.classList.add('hidden');
+      emailCont.classList.remove('hidden');
+      passCont.classList.remove('hidden');
+      confirmPassCont.classList.add('hidden');
+      resetTokenCont.classList.add('hidden');
+      forgotLink.classList.remove('hidden');
+      backBtn.classList.add('hidden');
+      toggleBtn.classList.remove('hidden');
+
+      if (isLogin) {
+        titleEl.innerText = 'Entrar no ChefBot';
+        emailLabel.innerText = 'E-mail ou @Username';
+        emailInput.placeholder = 'seu@email.com ou @username';
+        passLabel.innerText = 'Senha';
+        submitBtn.innerText = 'Entrar';
+        toggleBtn.innerText = 'Não tem conta? Cadastre-se';
+      } else if (isRegister) {
+        titleEl.innerText = 'Criar Nova Conta';
+        nameCont.classList.remove('hidden');
+        usernameCont.classList.remove('hidden');
+        emailLabel.innerText = 'E-mail';
+        emailInput.placeholder = 'seu@email.com';
+        passLabel.innerText = 'Senha';
+        confirmPassCont.classList.remove('hidden');
+        forgotLink.classList.add('hidden');
+        submitBtn.innerText = 'Cadastrar';
+        toggleBtn.innerText = 'Já possui uma conta? Faça login';
+      } else if (isForgot) {
+        titleEl.innerText = 'Recuperar Senha';
+        emailLabel.innerText = 'Informe seu E-mail ou @Username';
+        emailInput.placeholder = 'seu@email.com ou @username';
+        passCont.classList.add('hidden');
+        submitBtn.innerText = 'Gerar Código de Recuperação';
+        toggleBtn.classList.add('hidden');
+        backBtn.classList.remove('hidden');
+      } else if (isReset) {
+        titleEl.innerText = 'Redefinir Senha';
+        emailCont.classList.add('hidden');
+        resetTokenCont.classList.remove('hidden');
+        passCont.classList.remove('hidden');
+        passLabel.innerText = 'Nova Senha';
+        confirmPassCont.classList.remove('hidden');
+        forgotLink.classList.add('hidden');
+        submitBtn.innerText = 'Salvar Nova Senha';
+        toggleBtn.classList.add('hidden');
+        backBtn.classList.remove('hidden');
+      }
     }
 
     async function handleAuthSubmit(e) {
       e.preventDefault();
       const errBox = document.getElementById('auth-error-msg');
+      const succBox = document.getElementById('auth-success-msg');
       errBox.classList.add('hidden');
+      succBox.classList.add('hidden');
 
       const email = document.getElementById('auth-email').value.trim();
       const password = document.getElementById('auth-password').value;
+      const confirmPassword = document.getElementById('auth-confirm-password').value;
+      const username = document.getElementById('auth-username').value.trim();
       const name = document.getElementById('auth-name').value.trim();
+      const resetToken = document.getElementById('auth-reset-token').value.trim();
 
-      const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
-      const body = authMode === 'login' ? { email, password } : { email, password, name };
-
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-
-        const data = await res.json();
-        if (res.ok && data.token) {
-          setAuthToken(data.token);
-          currentUser = data;
-          document.getElementById('auth-status-dot').classList.remove('hidden');
-          closeAuthModal();
-          fetchRecipes();
-        } else {
-          errBox.innerText = data.error || 'Falha na autenticação.';
+      if (authMode === 'login') {
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+          const data = await res.json();
+          if (res.ok && data.token) {
+            setAuthToken(data.token);
+            currentUser = data;
+            document.getElementById('auth-status-dot').classList.remove('hidden');
+            closeAuthModal();
+            fetchRecipes();
+          } else {
+            errBox.innerText = data.error || 'Falha no login.';
+            errBox.classList.remove('hidden');
+          }
+        } catch (err) {
+          errBox.innerText = 'Erro ao conectar ao servidor.';
           errBox.classList.remove('hidden');
         }
-      } catch (err) {
-        errBox.innerText = 'Erro ao conectar ao servidor.';
-        errBox.classList.remove('hidden');
+      } else if (authMode === 'register') {
+        if (password !== confirmPassword) {
+          errBox.innerText = 'As senhas digitadas não são iguais.';
+          errBox.classList.remove('hidden');
+          return;
+        }
+        try {
+          const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, username, password, confirmPassword, name })
+          });
+          const data = await res.json();
+          if (res.ok && data.token) {
+            setAuthToken(data.token);
+            currentUser = data;
+            document.getElementById('auth-status-dot').classList.remove('hidden');
+            closeAuthModal();
+            fetchRecipes();
+          } else {
+            errBox.innerText = data.error || 'Falha no cadastro.';
+            errBox.classList.remove('hidden');
+          }
+        } catch (err) {
+          errBox.innerText = 'Erro ao conectar ao servidor.';
+          errBox.classList.remove('hidden');
+        }
+      } else if (authMode === 'forgot') {
+        try {
+          const res = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier: email })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            if (data.resetToken) {
+              document.getElementById('auth-reset-token').value = data.resetToken;
+              succBox.innerText = `Código gerado: ${data.resetToken}. Digite sua nova senha abaixo.`;
+            } else {
+              succBox.innerText = data.message || 'Verifique sua solicitação.';
+            }
+            succBox.classList.remove('hidden');
+            setAuthMode('reset');
+            succBox.classList.remove('hidden');
+          } else {
+            errBox.innerText = data.error || 'Erro ao processar solicitação.';
+            errBox.classList.remove('hidden');
+          }
+        } catch (err) {
+          errBox.innerText = 'Erro ao conectar ao servidor.';
+          errBox.classList.remove('hidden');
+        }
+      } else if (authMode === 'reset') {
+        if (password !== confirmPassword) {
+          errBox.innerText = 'As novas senhas digitadas não coincidem.';
+          errBox.classList.remove('hidden');
+          return;
+        }
+        try {
+          const res = await fetch('/api/auth/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: resetToken, newPassword: password, confirmPassword })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            succBox.innerText = data.message || 'Senha alterada com sucesso!';
+            succBox.classList.remove('hidden');
+            setTimeout(() => {
+              setAuthMode('login');
+              succBox.classList.add('hidden');
+            }, 2000);
+          } else {
+            errBox.innerText = data.error || 'Código inválido ou expirado.';
+            errBox.classList.remove('hidden');
+          }
+        } catch (err) {
+          errBox.innerText = 'Erro ao conectar ao servidor.';
+          errBox.classList.remove('hidden');
+        }
       }
     }
 

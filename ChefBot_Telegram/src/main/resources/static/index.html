@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>ChefBot Culinário</title>
 
   <!-- PWA Meta Tags -->
@@ -1401,10 +1404,17 @@
       fetchRecipes();
     }
 
-    // PWA Service Worker & Install Prompt
+    // Desregistra qualquer Service Worker e limpa Cache Storage para evitar cache agressivo no celular
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(console.warn);
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        keys.forEach((key) => caches.delete(key));
       });
     }
 

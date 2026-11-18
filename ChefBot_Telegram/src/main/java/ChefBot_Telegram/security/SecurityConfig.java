@@ -48,6 +48,7 @@ public class SecurityConfig {
                     "/manifest.json",
                     "/sw.js",
                     "/icons/**",
+                    "/js/**",
                     "/favicon.ico",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",

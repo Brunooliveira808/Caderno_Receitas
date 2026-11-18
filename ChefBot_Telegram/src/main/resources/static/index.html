@@ -38,11 +38,30 @@
       }
     }
   </script>
-  <!-- Lucide Icons (Local com fallback CDN) -->
+  <script>
+    // Limpeza defensiva de Service Worker e Caches na inicializacao
+    (function() {
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          for (var i = 0; i < regs.length; i++) regs[i].unregister();
+        }).catch(function() {});
+      }
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        caches.keys().then(function(keys) {
+          for (var i = 0; i < keys.length; i++) caches.delete(keys[i]);
+        }).catch(function() {});
+      }
+    })();
+  </script>
+
+  <!-- Lucide Icons (Local com fallback assincrono) -->
   <script src="/js/lucide.min.js"></script>
   <script>
     if (typeof lucide === 'undefined') {
-      document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');
+      var s = document.createElement('script');
+      s.src = 'https://unpkg.com/lucide@latest';
+      s.onload = function() { if (typeof safeCreateIcons === 'function') safeCreateIcons(); };
+      document.head.appendChild(s);
     }
   </script>
   <style>
@@ -545,6 +564,16 @@
 
   <!-- JAVASCRIPT DA APLICAÇÃO -->
   <script>
+    function safeCreateIcons() {
+      if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+        try {
+          lucide.createIcons();
+        } catch (e) {
+          console.warn('Erro ao renderizar ícones lucide:', e);
+        }
+      }
+    }
+
     let activeTab = 'my-recipes'; // 'explore', 'my-recipes', 'profile'
     let currentFilter = 'Todos';
     let searchQuery = '';
@@ -623,7 +652,7 @@
         <span>${message}</span>
       `;
       container.appendChild(toast);
-      lucide.createIcons();
+      safeCreateIcons();
 
       // Animação de entrada
       requestAnimationFrame(() => {
@@ -699,7 +728,7 @@
         fetchRecipes();
       }
 
-      lucide.createIcons();
+      safeCreateIcons();
     }
 
     function refreshActiveTab() {
@@ -739,6 +768,7 @@
         const url = '/api/recipes' + (params.toString() ? '?' + params.toString() : '');
         const res = await fetch(url, { headers: authHeaders() });
         if (res.status === 401 || res.status === 403) {
+          setAuthToken(null);
           openAuthModal();
           showLoading(false);
           return;
@@ -831,7 +861,7 @@
         container.appendChild(card);
       });
 
-      lucide.createIcons();
+      safeCreateIcons();
     }
 
     function setFilter(cat) {
@@ -902,7 +932,7 @@
         loggedView.classList.add('hidden');
         guestView.classList.remove('hidden');
       } finally {
-        lucide.createIcons();
+        safeCreateIcons();
       }
     }
 
@@ -978,7 +1008,7 @@
       };
 
       document.getElementById('modal-details').classList.remove('hidden');
-      lucide.createIcons();
+      safeCreateIcons();
     }
 
     function closeDetailsModal() {
@@ -1024,7 +1054,7 @@
         modeText.classList.remove('hidden');
         modeAudio.classList.add('hidden');
       }
-      lucide.createIcons();
+      safeCreateIcons();
     }
 
     async function toggleAudioRecording() {
@@ -1208,12 +1238,21 @@
 
     // 10. MODAL AUTENTICAÇÃO
     function openAuthModal() {
-      document.getElementById('modal-auth').classList.remove('hidden');
+      const modal = document.getElementById('modal-auth');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+      }
       setAuthMode('login');
+      safeCreateIcons();
     }
 
     function closeAuthModal() {
-      document.getElementById('modal-auth').classList.add('hidden');
+      const modal = document.getElementById('modal-auth');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
     }
 
     function toggleAuthMode() {
@@ -1404,20 +1443,6 @@
       fetchRecipes();
     }
 
-    // Desregistra qualquer Service Worker e limpa Cache Storage para evitar cache agressivo no celular
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        for (let registration of registrations) {
-          registration.unregister();
-        }
-      });
-    }
-    if ('caches' in window) {
-      caches.keys().then((keys) => {
-        keys.forEach((key) => caches.delete(key));
-      });
-    }
-
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
@@ -1450,11 +1475,17 @@
 
     // Inicialização da aplicação
     window.addEventListener('DOMContentLoaded', async () => {
-      if (typeof lucide !== 'undefined' && lucide.createIcons) {
-        lucide.createIcons();
-      }
-      if (!getAuthToken()) {
+      safeCreateIcons();
+      const token = getAuthToken();
+      if (!token) {
         openAuthModal();
+      } else {
+        fetch('/api/recipes', { headers: authHeaders() }).then(res => {
+          if (res.status === 401 || res.status === 403) {
+            setAuthToken(null);
+            openAuthModal();
+          }
+        }).catch(() => {});
       }
       switchTab('my-recipes');
     });

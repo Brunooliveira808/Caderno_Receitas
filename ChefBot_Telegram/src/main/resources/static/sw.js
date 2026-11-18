@@ -1,5 +1,4 @@
-// Service Worker Desativado e Auto-Limpante
-// Limpa qualquer cache e se desregistra imediatamente do navegador
+// Service Worker Auto-Destrutivo (Limpeza de Cache)
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -8,16 +7,13 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(keys.map((key) => caches.delete(key)));
-    }).then(() => self.clients.claim()).then(() => {
-      // Notifica as abas para recarregarem se necessário
-      return self.clients.matchAll().then((clients) => {
-        clients.forEach((client) => client.navigate(client.url));
-      });
+    }).then(() => {
+      return self.registration.unregister();
+    }).then(() => {
+      return self.clients.claim();
     })
   );
 });
 
-// Em fetch, não intercepta absolutamente nada, deixa o navegador buscar direto da rede
-self.addEventListener('fetch', (event) => {
-  return;
-});
+// Não intercepta fetch: permite 100% de tráfego direto da rede
+self.addEventListener('fetch', () => {});

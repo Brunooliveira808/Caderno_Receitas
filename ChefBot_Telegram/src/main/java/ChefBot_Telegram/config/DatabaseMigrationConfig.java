@@ -17,28 +17,14 @@ public class DatabaseMigrationConfig {
     @Order(1)
     public CommandLineRunner migrateDatabase(JdbcTemplate jdbcTemplate) {
         return args -> {
-            log.info("Iniciando checagem/migração defensiva do schema do PostgreSQL...");
+            log.info("Iniciando checagem/migração defensiva do schema do banco de dados...");
             try {
                 // 1. Garantir que a coluna username existe em app_users
                 jdbcTemplate.execute(
                     "ALTER TABLE app_users ADD COLUMN IF NOT EXISTS username VARCHAR(50);"
                 );
 
-                // 2. Preencher usernames nulos baseado no prefixo do email
-                jdbcTemplate.execute(
-                    "UPDATE app_users SET username = LOWER(REGEXP_REPLACE(SPLIT_PART(email, '@', 1), '[^a-zA-Z0-9_.]', '', 'g')) WHERE username IS NULL OR username = '';"
-                );
-
-                // 3. Garantir unicidade de username (se não for nulo)
-                jdbcTemplate.execute(
-                    "DO $$ BEGIN " +
-                    "  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uk_app_users_username') THEN " +
-                    "    ALTER TABLE app_users ADD CONSTRAINT uk_app_users_username UNIQUE (username); " +
-                    "  END IF; " +
-                    "END $$;"
-                );
-
-                // 4. Garantir que a tabela password_reset_tokens existe
+                // 2. Garantir que a tabela password_reset_tokens existe
                 jdbcTemplate.execute(
                     "CREATE TABLE IF NOT EXISTS password_reset_tokens (" +
                     "  id BIGSERIAL PRIMARY KEY," +
@@ -49,37 +35,7 @@ public class DatabaseMigrationConfig {
                     ");"
                 );
 
-                // 5. Garantir campos sociais em recipes (is_public, forked_from_username, fork_count)
-                jdbcTemplate.execute(
-                    "ALTER TABLE recipes ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE;"
-                );
-                jdbcTemplate.execute(
-                    "ALTER TABLE recipes ADD COLUMN IF NOT EXISTS forked_from_username VARCHAR(50);"
-                );
-                jdbcTemplate.execute(
-                    "ALTER TABLE recipes ADD COLUMN IF NOT EXISTS fork_count BIGINT NOT NULL DEFAULT 0;"
-                );
-
-                // 6. Garantir tabela de tags para receitas (recipe_tags)
-                jdbcTemplate.execute(
-                    "CREATE TABLE IF NOT EXISTS recipe_tags (" +
-                    "  recipe_id BIGINT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE," +
-                    "  tag VARCHAR(50) NOT NULL" +
-                    ");"
-                );
-
-                // 7. Garantir tabela de seguidores (user_follows)
-                jdbcTemplate.execute(
-                    "CREATE TABLE IF NOT EXISTS user_follows (" +
-                    "  id BIGSERIAL PRIMARY KEY," +
-                    "  follower_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE," +
-                    "  following_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE," +
-                    "  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-                    "  CONSTRAINT uk_user_follows_follower_following UNIQUE (follower_id, following_id)" +
-                    ");"
-                );
-
-                log.info("Migração defensiva concluída com sucesso no PostgreSQL!");
+                log.info("Migração defensiva concluída com sucesso!");
             } catch (Exception e) {
                 log.warn("Nota na migração de schema: {}", e.getMessage());
             }

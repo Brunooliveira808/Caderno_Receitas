@@ -1,17 +1,11 @@
 package ChefBot_Telegram.service;
 
-import ChefBot_Telegram.dto.UserProfileDTO;
 import ChefBot_Telegram.model.AppUser;
 import ChefBot_Telegram.model.Recipe;
 import ChefBot_Telegram.model.User;
-import ChefBot_Telegram.model.UserFollow;
 import ChefBot_Telegram.repository.AppUserRepository;
 import ChefBot_Telegram.repository.RecipeRepository;
-import ChefBot_Telegram.repository.UserFollowRepository;
 import ChefBot_Telegram.repository.UserRepository;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,23 +20,20 @@ public class UserService {
     private final AppUserRepository appUserRepository;
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
-    private final UserFollowRepository userFollowRepository;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public UserService(
             AppUserRepository appUserRepository,
             UserRepository userRepository,
-            RecipeRepository recipeRepository,
-            UserFollowRepository userFollowRepository) {
+            RecipeRepository recipeRepository) {
         this.appUserRepository = appUserRepository;
         this.userRepository = userRepository;
         this.recipeRepository = recipeRepository;
-        this.userFollowRepository = userFollowRepository;
     }
 
     /**
      * Retorna ou cria a entidade User (relacionada a Recipes) correspondente ao AppUser autenticado.
-     * Se o AppUser tiver telegramChatId, utiliza esse telegramChatId. Caso contrário, gera um ID virtual negativo único.
+     * Se o AppUser tiver telegramChatId, utiliza esse id. Caso contrário, gera um ID virtual único.
      */
     @Transactional
     public User getOrCreateRecipeUser(AppUser appUser) {
@@ -50,8 +41,6 @@ public class UserService {
                 ? appUser.getTelegramChatId()
                 : (-1000000000L - appUser.getId());
 
-        // Se o usuário ainda não tem receitas próprias, mas existem receitas legadas (chatId 999999999L),
-        // migra automaticamente essas receitas para este usuário!
         Long legacyChatId = 999999999L;
         List<Recipe> legacyRecipes = recipeRepository.findByUserTelegramChatId(legacyChatId);
 
@@ -92,8 +81,7 @@ public class UserService {
     }
 
     /**
-     * Processa a vinculação a partir do comando do Telegram: `/vincular CHEF-XXXX`.
-     * Transfere as receitas da conta web desvinculada para o novo chatId compartilhado.
+     * Processa a vinculação a partir do comando do Telegram: /vincular CHEF-XXXX.
      */
     @Transactional
     public String linkTelegramAccount(Long telegramChatId, String telegramUserName, String linkCode) {
@@ -116,17 +104,14 @@ public class UserService {
             return "❌ Este código de vinculação expirou. Por favor, gere um novo código no app.";
         }
 
-        // Verifica se o telegramChatId já pertence a outro usuário
         Optional<AppUser> existingWithChat = appUserRepository.findByTelegramChatId(telegramChatId);
         if (existingWithChat.isPresent() && !existingWithChat.get().getId().equals(appUser.getId())) {
             return "⚠️ Este Telegram já está vinculado à conta: <b>" + existingWithChat.get().getEmail() + "</b>.";
         }
 
-        // Identifica o User virtual antigo da Web (se existia)
         Long oldVirtualChatId = -1000000000L - appUser.getId();
         Optional<User> oldVirtualUserOpt = userRepository.findByTelegramChatId(oldVirtualChatId);
 
-        // Busca ou cria o User com o telegramChatId real
         User realUser = userRepository.findByTelegramChatId(telegramChatId)
                 .orElseGet(() -> {
                     User newUser = new User();
@@ -135,9 +120,7 @@ public class UserService {
                     return userRepository.save(newUser);
                 });
 
-        // Se existiam receitas criadas pelo usuário virtual na Web, migra para o realUser
         if (oldVirtualUserOpt.isPresent()) {
-            User oldVirtualUser = oldVirtualUserOpt.get();
             List<Recipe> oldRecipes = recipeRepository.findByUserTelegramChatId(oldVirtualChatId);
             for (Recipe r : oldRecipes) {
                 r.setUser(realUser);
@@ -145,7 +128,6 @@ public class UserService {
             recipeRepository.saveAll(oldRecipes);
         }
 
-        // Atualiza o AppUser
         appUser.setTelegramChatId(telegramChatId);
         appUser.setLinkCode(null);
         appUser.setLinkCodeExpiresAt(null);
@@ -153,97 +135,5 @@ public class UserService {
 
         return "🎉 <b>Conta vinculada com sucesso!</b>\n\nOlá, <b>" + appUser.getName() + "</b> (" + appUser.getEmail() + ")!\n" +
                "Agora todas as receitas que você mandar aqui no Telegram aparecerão no seu App do celular, e as criadas no App estarão disponíveis aqui!";
-    }
-
-    /**
-     * Alterna o estado de seguir/deixar de seguir (toggle follow) entre dois chefs.
-     * Retorna true se agora está seguindo, false se deu unfollow.
-     */
-    @Transactional
-    @CacheEvict(value = "chefProfiles", allEntries = true)
-    public boolean toggleFollow(AppUser follower, String targetUsername) {
-        if (follower.getUsername().equalsIgnoreCase(targetUsername.trim())) {
-            throw new IllegalArgumentException("Você não pode seguir a si mesmo.");
-        }
-
-        AppUser targetUser = appUserRepository.findByUsernameIgnoreCase(targetUsername.trim())
-                .orElseThrow(() -> new IllegalArgumentException("Chef não encontrado com username: " + targetUsername));
-
-        Optional<UserFollow> existingFollow = userFollowRepository.findByFollowerIdAndFollowingId(follower.getId(), targetUser.getId());
-        if (existingFollow.isPresent()) {
-            userFollowRepository.delete(existingFollow.get());
-            return false;
-        } else {
-            UserFollow follow = new UserFollow(follower, targetUser);
-            userFollowRepository.save(follow);
-            return true;
-        }
-    }
-
-    /**
-     * Retorna o perfil público e métricas sociais de um chef.
-     */
-    @Transactional(readOnly = true)
-    @Cacheable(
-        value = "chefProfiles",
-        key = "(#currentUser != null ? #currentUser.username : 'anon') + ':' + #username.trim().toLowerCase()"
-    )
-    public UserProfileDTO getChefProfile(AppUser currentUser, String username) {
-        AppUser target = appUserRepository.findByUsernameIgnoreCase(username.trim())
-                .orElseThrow(() -> new IllegalArgumentException("Chef não encontrado com username: " + username));
-
-        boolean isSelf = (currentUser != null && currentUser.getId().equals(target.getId()));
-        boolean isFollowing = false;
-        if (currentUser != null && !isSelf) {
-            isFollowing = userFollowRepository.existsByFollowerIdAndFollowingId(currentUser.getId(), target.getId());
-        }
-
-        long followersCount = userFollowRepository.countByFollowingId(target.getId());
-        long followingCount = userFollowRepository.countByFollowerId(target.getId());
-
-        // Receitas públicas do usuário
-        Long targetChatId = (target.getTelegramChatId() != null)
-                ? target.getTelegramChatId()
-                : (-1000000000L - target.getId());
-        long recipesCount = recipeRepository.countByUserTelegramChatIdAndIsPublicTrue(targetChatId);
-
-        return new UserProfileDTO(
-                target.getUsername(),
-                target.getName(),
-                recipesCount,
-                followersCount,
-                followingCount,
-                isFollowing,
-                isSelf
-        );
-    }
-
-    /**
-     * Retorna a lista de receitas públicas de um chef.
-     */
-    @Transactional(readOnly = true)
-    public List<Recipe> getChefPublicRecipes(String username) {
-        AppUser target = appUserRepository.findByUsernameIgnoreCase(username.trim())
-                .orElseThrow(() -> new IllegalArgumentException("Chef não encontrado com username: " + username));
-
-        Long targetChatId = (target.getTelegramChatId() != null)
-                ? target.getTelegramChatId()
-                : (-1000000000L - target.getId());
-
-        return recipeRepository.findByUserTelegramChatIdAndIsPublicTrue(targetChatId);
-    }
-
-    /**
-     * Busca chefs por username ou nome.
-     */
-    @Transactional(readOnly = true)
-    public List<UserProfileDTO> searchChefs(AppUser currentUser, String query) {
-        if (query == null || query.isBlank()) {
-            return List.of();
-        }
-        List<AppUser> found = appUserRepository.searchChefs(query.trim());
-        return found.stream()
-                .map(target -> getChefProfile(currentUser, target.getUsername()))
-                .toList();
     }
 }

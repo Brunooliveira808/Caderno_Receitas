@@ -37,12 +37,8 @@ class UserSyncTest {
     @Autowired
     private RecipeRepository recipeRepository;
 
-    @Autowired
-    private ChefBot_Telegram.repository.UserFollowRepository userFollowRepository;
-
     @BeforeEach
     void setUp() {
-        userFollowRepository.deleteAll();
         recipeRepository.deleteAll();
         userRepository.deleteAll();
         appUserRepository.deleteAll();

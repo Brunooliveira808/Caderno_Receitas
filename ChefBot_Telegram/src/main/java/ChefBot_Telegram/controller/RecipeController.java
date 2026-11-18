@@ -34,37 +34,14 @@ public class RecipeController {
     private final RecipeService recipeService;
     private final GeminiService geminiService;
     private final UserService userService;
-    private final ChefBot_Telegram.repository.RecipeRepository recipeRepository;
 
     public RecipeController(
             RecipeService recipeService,
             GeminiService geminiService,
             UserService userService) {
-        this(recipeService, geminiService, userService, null);
-    }
-
-    @org.springframework.beans.factory.annotation.Autowired
-    public RecipeController(
-            RecipeService recipeService,
-            GeminiService geminiService,
-            UserService userService,
-            ChefBot_Telegram.repository.RecipeRepository recipeRepository) {
         this.recipeService = recipeService;
         this.geminiService = geminiService;
         this.userService = userService;
-        this.recipeRepository = recipeRepository;
-    }
-
-    /**
-     * Feed público de receitas para a aba Explorar, com busca textual opcional.
-     */
-    @GetMapping("/explore")
-    public List<RecipeWebDTO> exploreRecipes(@RequestParam(required = false) String query) {
-        List<Recipe> recipes = recipeService.getPublicRecipes(query);
-
-        return recipes.stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
     }
 
     /**
@@ -251,52 +228,6 @@ public class RecipeController {
         return ResponseEntity.notFound().build();
     }
 
-    /**
-     * Alterna a visibilidade (pública / privada) de uma receita do usuário.
-     */
-    @PatchMapping("/{id}/visibility")
-    public ResponseEntity<?> toggleVisibility(
-            @AuthenticationPrincipal AppUser user,
-            @PathVariable Long id) {
-        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-
-        User recipeUser = userService.getOrCreateRecipeUser(user);
-        try {
-            Recipe updated = recipeService.toggleVisibility(recipeUser.getTelegramChatId(), id);
-            return ResponseEntity.ok(toDTO(updated));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            log.error("Erro ao alterar visibilidade da receita #{}: ", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /**
-     * Clona/Fork uma receita pública para a coleção pessoal (Minhas Receitas) do usuário autenticado.
-     */
-    @PostMapping("/{id}/fork")
-    public ResponseEntity<?> forkRecipe(
-            @AuthenticationPrincipal AppUser user,
-            @PathVariable Long id) {
-        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-
-        User recipeUser = userService.getOrCreateRecipeUser(user);
-        try {
-            Recipe forked = recipeService.forkRecipe(recipeUser, id);
-            return ResponseEntity.status(HttpStatus.CREATED).body(toDTO(forked));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            log.error("Erro ao duplicar receita #{}: ", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", e.getMessage()));
-        }
-    }
-
     private RecipeWebDTO toDTO(Recipe recipe) {
         List<IngredientDTO> ings = recipe.getIngredients().stream()
             .map(i -> new IngredientDTO(i.getName(), i.getQuantity(), i.getUnit(), i.getNotes()))
@@ -316,11 +247,7 @@ public class RecipeController {
             recipe.getPrepTimeMinutes(),
             recipe.getPortions(),
             recipe.getRawTranscript(),
-            recipe.isPublic(),
             author,
-            recipe.getForkedFromUsername(),
-            recipe.getForkCount(),
-            recipe.getTags(),
             ings,
             insts
         );

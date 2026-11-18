@@ -3,18 +3,19 @@ package ChefBot_Telegram.service;
 import ChefBot_Telegram.dto.IngredientDTO;
 import ChefBot_Telegram.dto.InstructionDTO;
 import ChefBot_Telegram.dto.RecipeResponseDTO;
+import ChefBot_Telegram.dto.RecipeUpdateRequestDTO;
+import ChefBot_Telegram.model.AppUser;
 import ChefBot_Telegram.model.Ingredient;
 import ChefBot_Telegram.model.Instruction;
 import ChefBot_Telegram.model.Recipe;
 import ChefBot_Telegram.model.User;
+import ChefBot_Telegram.repository.AppUserRepository;
 import ChefBot_Telegram.repository.RecipeRepository;
 import ChefBot_Telegram.repository.UserRepository;
 import ChefBot_Telegram.util.TelegramHtmlUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,25 +34,29 @@ public class RecipeService {
         "café da manhã", "almoço", "lanche", "jantar", "ceia", "sobremesa", "bebida", "petisco", "molho"
     );
 
+    private static final Set<String> STOPWORDS = Set.of(
+        "de", "da", "do", "das", "dos", "com", "sem", "para", "em", "e", "ou", "a", "o", "as", "os", "um", "uma", "uns", "umas", "no", "na", "nos", "nas"
+    );
+
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
-    private final ChefBot_Telegram.repository.AppUserRepository appUserRepository;
+    private final AppUserRepository appUserRepository;
 
     public RecipeService(UserRepository userRepository, RecipeRepository recipeRepository) {
         this(userRepository, recipeRepository, null);
     }
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public RecipeService(UserRepository userRepository,
                          RecipeRepository recipeRepository,
-                         ChefBot_Telegram.repository.AppUserRepository appUserRepository) {
+                         AppUserRepository appUserRepository) {
         this.userRepository = userRepository;
         this.recipeRepository = recipeRepository;
         this.appUserRepository = appUserRepository;
     }
 
     /**
-     * Normaliza a categoria vinda da IA ou do usuário para uma das 6 categorias oficiais.
+     * Normaliza a categoria vinda da IA ou do usuário para uma das opções canônicas.
      */
     public String normalizeCategory(String rawCategory) {
         if (rawCategory == null || rawCategory.isBlank()) {
@@ -67,7 +72,7 @@ public class RecipeService {
         if (norm.contains("petisco") || norm.contains("tira gosto") || norm.contains("aperitivo") || norm.contains("tira-gosto") || norm.contains("boteco") || norm.contains("canapé")) return "petisco";
         if (norm.contains("sobremesa") || norm.contains("doce") || norm.contains("bolo") || norm.contains("pudim") || norm.contains("torta doce")) return "sobremesa";
         if (norm.contains("lanche") || norm.contains("salgado") || norm.contains("sanduiche")) return "lanche";
-        
+
         for (String valid : VALID_CATEGORIES) {
             if (normalizeText(valid).equals(norm)) {
                 return valid;
@@ -77,14 +82,10 @@ public class RecipeService {
     }
 
     /**
-     * Busca ou cria o usuário pelo telegramChatId e salva a receita com ingredientes e passos.
-     * Possui proteção contra duplicação acidental recente (idempotência nos últimos 30 segundos).
+     * Salva uma receita extraída pela IA para o usuário informado.
+     * Inclui proteção contra duplicidade acidental recente (janela de 30 segundos).
      */
     @Transactional
-    @Caching(evict = {
-        @CacheEvict(value = "exploreRecipes", allEntries = true),
-        @CacheEvict(value = "chefProfiles", allEntries = true)
-    })
     public Recipe saveRecipeFromDTO(Long telegramChatId, String userName, RecipeResponseDTO dto, String rawTranscript) {
         User user = userRepository.findByTelegramChatId(telegramChatId)
             .orElseGet(() -> {
@@ -96,15 +97,14 @@ public class RecipeService {
 
         String targetTitle = (dto.title() != null && !dto.title().isBlank()) ? dto.title().trim() : "Receita sem título";
 
-        // Trava de idempotência: se o mesmo usuário salvou uma receita idêntica nos últimos 30 segundos,
-        // retorna a receita já salva para evitar duplicidade acidental.
+        // Trava de idempotência recente (30 segundos)
         List<Recipe> existingUserRecipes = recipeRepository.findByUserTelegramChatId(telegramChatId);
         if (!existingUserRecipes.isEmpty()) {
             java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().minusSeconds(30);
             for (Recipe r : existingUserRecipes) {
                 if (r.getCreatedAt() != null && r.getCreatedAt().isAfter(cutoff)) {
                     if (normalizeText(r.getTitle()).equals(normalizeText(targetTitle))) {
-                        log.info("Receita duplicada recente detectada ('{}'). Retornando receita existente ID #{}", targetTitle, r.getId());
+                        log.info("Receita duplicada recente detectada ('{}'). Retornando existente ID #{}", targetTitle, r.getId());
                         return r;
                     }
                 }
@@ -118,21 +118,13 @@ public class RecipeService {
         recipe.setSourceAuthor(dto.sourceAuthor());
         recipe.setPrepTimeMinutes(dto.prepTimeMinutes());
         recipe.setPortions(dto.portions());
-        if (dto.isPublic() != null) {
-            recipe.setPublic(dto.isPublic());
-        }
-        if (dto.tags() != null) {
-            recipe.setTags(new ArrayList<>(dto.tags()));
-        }
 
-        // Prioriza a transcrição real se o rawTranscript fornecido for apenas genérico
         if (dto.transcription() != null && !dto.transcription().isBlank()) {
             recipe.setRawTranscript(dto.transcription().trim());
         } else {
             recipe.setRawTranscript(rawTranscript);
         }
 
-        // Mapear Ingredientes
         if (dto.ingredients() != null) {
             for (IngredientDTO ingDTO : dto.ingredients()) {
                 Ingredient ingredient = new Ingredient();
@@ -144,7 +136,6 @@ public class RecipeService {
             }
         }
 
-        // Mapear Instruções de Preparo
         if (dto.instructions() != null) {
             for (InstructionDTO instDTO : dto.instructions()) {
                 Instruction instruction = new Instruction();
@@ -154,15 +145,11 @@ public class RecipeService {
             }
         }
 
-        Recipe savedRecipe = recipeRepository.save(recipe);
-        log.info("Receita '{}' (ID: {}) salva com sucesso para o usuário chatId: {}", 
-                 savedRecipe.getTitle(), savedRecipe.getId(), telegramChatId);
-
-        return savedRecipe;
+        return recipeRepository.save(recipe);
     }
 
     /**
-     * Atualiza uma receita existente a partir do DTO retornado pela IA.
+     * Atualiza uma receita existente com base no retorno da IA.
      */
     @Transactional
     public Recipe updateRecipeFromDTO(Long telegramChatId, Long recipeId, RecipeResponseDTO dto) {
@@ -184,14 +171,7 @@ public class RecipeService {
         if (dto.portions() != null) {
             recipe.setPortions(dto.portions() > 0 ? dto.portions() : null);
         }
-        if (dto.isPublic() != null) {
-            recipe.setPublic(dto.isPublic());
-        }
-        if (dto.tags() != null) {
-            recipe.setTags(new ArrayList<>(dto.tags()));
-        }
 
-        // Atualizar Ingredientes com salvaguarda de integridade
         if (dto.ingredients() != null && !dto.ingredients().isEmpty()) {
             recipe.getIngredients().clear();
             for (IngredientDTO ingDTO : dto.ingredients()) {
@@ -206,7 +186,6 @@ public class RecipeService {
             }
         }
 
-        // Atualizar Instruções com salvaguarda de integridade
         if (dto.instructions() != null && !dto.instructions().isEmpty()) {
             recipe.getInstructions().clear();
             int step = 1;
@@ -221,36 +200,97 @@ public class RecipeService {
             }
         }
 
-        Recipe updated = recipeRepository.saveAndFlush(recipe);
-        log.info("Receita ID: {} atualizada com sucesso no banco de dados.", updated.getId());
-        return updated;
+        return recipeRepository.saveAndFlush(recipe);
     }
 
     /**
-     * Deleta uma receita pertencente ao usuário.
+     * Atualização manual enviada pelo usuário via formulário web.
      */
+    @Transactional
+    public Recipe updateRecipeManual(Long id, RecipeUpdateRequestDTO dto) {
+        Recipe recipe = recipeRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Receita não encontrada com ID: " + id));
+
+        if (dto.title() != null && !dto.title().isBlank()) {
+            recipe.setTitle(dto.title().trim());
+        }
+        if (dto.category() != null) {
+            recipe.setCategory(dto.category().isBlank() ? null : normalizeCategory(dto.category()));
+        }
+        if (dto.sourceAuthor() != null) {
+            recipe.setSourceAuthor(dto.sourceAuthor().isBlank() ? null : dto.sourceAuthor().trim());
+        }
+        if (dto.prepTimeMinutes() != null) {
+            recipe.setPrepTimeMinutes(dto.prepTimeMinutes() > 0 ? dto.prepTimeMinutes() : null);
+        }
+        if (dto.portions() != null) {
+            recipe.setPortions(dto.portions() > 0 ? dto.portions() : null);
+        }
+
+        if (dto.ingredients() != null) {
+            recipe.getIngredients().clear();
+            for (IngredientDTO ingDTO : dto.ingredients()) {
+                if (ingDTO.name() != null && !ingDTO.name().isBlank()) {
+                    Ingredient ingredient = new Ingredient();
+                    ingredient.setName(ingDTO.name().trim());
+                    ingredient.setQuantity(ingDTO.quantity());
+                    ingredient.setUnit(ingDTO.unit());
+                    ingredient.setNotes(ingDTO.notes());
+                    recipe.addIngredient(ingredient);
+                }
+            }
+        }
+
+        if (dto.instructions() != null) {
+            recipe.getInstructions().clear();
+            int step = 1;
+            for (InstructionDTO instDTO : dto.instructions()) {
+                if (instDTO.description() != null && !instDTO.description().isBlank()) {
+                    Instruction instruction = new Instruction();
+                    instruction.setStepNumber(instDTO.stepNumber() != null ? instDTO.stepNumber() : step);
+                    instruction.setInstructionText(instDTO.description().trim());
+                    recipe.addInstruction(instruction);
+                    step++;
+                }
+            }
+        }
+
+        return recipeRepository.saveAndFlush(recipe);
+    }
+
     @Transactional
     public boolean deleteRecipe(Long telegramChatId, Long recipeId) {
         Optional<Recipe> recipeOpt = recipeRepository.findByUserTelegramChatIdAndId(telegramChatId, recipeId);
         if (recipeOpt.isPresent()) {
             recipeRepository.delete(recipeOpt.get());
-            log.info("Receita ID: {} deletada com sucesso pelo usuário chatId: {}", recipeId, telegramChatId);
             return true;
         }
         return false;
     }
 
-    /**
-     * Retorna todas as receitas salvas pelo usuário.
-     */
+    @Transactional
+    public boolean deleteRecipeById(Long id) {
+        if (recipeRepository.existsById(id)) {
+            recipeRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
+
     @Transactional(readOnly = true)
     public List<Recipe> findRecipesByChatId(Long telegramChatId) {
         return recipeRepository.findByUserTelegramChatId(telegramChatId);
     }
 
-    private static final Set<String> STOPWORDS = Set.of(
-        "de", "da", "do", "das", "dos", "com", "sem", "para", "em", "e", "ou", "a", "o", "as", "os", "um", "uma", "uns", "umas", "no", "na", "nos", "nas"
-    );
+    @Transactional(readOnly = true)
+    public Optional<Recipe> findRecipeByUserAndId(Long telegramChatId, Long recipeId) {
+        return recipeRepository.findByUserTelegramChatIdAndId(telegramChatId, recipeId);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Recipe> findRecipeById(Long id) {
+        return recipeRepository.findById(id);
+    }
 
     public List<String> extractSearchTokens(String query) {
         if (query == null) return List.of();
@@ -269,7 +309,6 @@ public class RecipeService {
         if (text == null || token == null || token.isBlank()) return false;
         String normalizedText = normalizeText(text);
         if (normalizedText.contains(token)) return true;
-        // Tratamento simples de plural/singular em português (ex: ovos -> ovo)
         if (token.endsWith("s") && token.length() > 3) {
             String singular = token.substring(0, token.length() - 1);
             if (normalizedText.contains(singular)) return true;
@@ -277,22 +316,15 @@ public class RecipeService {
         return false;
     }
 
-    /**
-     * Busca receitas pelo ID ou por palavras-chave com relevância, tokenização e busca em instruções.
-     */
     @Transactional(readOnly = true)
     public List<Recipe> searchRecipes(Long telegramChatId, String query) {
         if (query == null || query.isBlank()) {
             return List.of();
         }
-
         List<Recipe> allUserRecipes = recipeRepository.findByUserTelegramChatId(telegramChatId);
         return filterAndScoreRecipes(allUserRecipes, query);
     }
 
-    /**
-     * Busca receitas de um usuário específico (ou filtradas por categoria) aplicando o motor de relevância por texto.
-     */
     @Transactional(readOnly = true)
     public List<Recipe> searchUserRecipes(Long telegramChatId, String query, String category) {
         List<Recipe> recipes = recipeRepository.findByUserTelegramChatId(telegramChatId);
@@ -320,7 +352,6 @@ public class RecipeService {
         List<String> tokens = extractSearchTokens(cleanQuery);
         String normalizedFullQuery = normalizeText(cleanQuery);
 
-        // Checar se a query tem ID numérico direto (ex: "1" ou "#1")
         Long explicitId = null;
         String numeric = cleanQuery.startsWith("#") ? cleanQuery.substring(1).trim() : cleanQuery;
         if (numeric.matches("^\\d+$")) {
@@ -335,12 +366,10 @@ public class RecipeService {
         for (Recipe r : sourceRecipes) {
             int score = 0;
 
-            // 1. Prioridade máxima se o ID for idêntico ao buscado
             if (explicitId != null && r.getId().equals(explicitId)) {
                 score += 100;
             }
 
-            // 2. Pontuação por correspondência exata de frase completa no título
             String normalizedTitle = normalizeText(r.getTitle());
             if (!normalizedFullQuery.isBlank() && normalizedTitle.contains(normalizedFullQuery)) {
                 score += 25;
@@ -349,20 +378,16 @@ public class RecipeService {
             int titleTokensMatched = 0;
 
             for (String token : tokens) {
-                // Título: peso 10 por token
                 if (textMatchesToken(r.getTitle(), token)) {
                     score += 10;
                     titleTokensMatched++;
                 }
-                // Categoria: peso 5 por token
                 if (r.getCategory() != null && textMatchesToken(r.getCategory(), token)) {
                     score += 5;
                 }
-                // Autor: peso 5 por token
                 if (r.getSourceAuthor() != null && textMatchesToken(r.getSourceAuthor(), token)) {
                     score += 5;
                 }
-                // Ingredientes: peso 4 por token
                 if (r.getIngredients() != null) {
                     for (Ingredient ing : r.getIngredients()) {
                         if (textMatchesToken(ing.getName(), token) || 
@@ -372,7 +397,6 @@ public class RecipeService {
                         }
                     }
                 }
-                // Modo de preparo / Instruções: peso 2 por token
                 if (r.getInstructions() != null) {
                     for (Instruction inst : r.getInstructions()) {
                         if (textMatchesToken(inst.getInstructionText(), token)) {
@@ -383,7 +407,6 @@ public class RecipeService {
                 }
             }
 
-            // Bônus se todos os tokens foram encontrados no título
             if (!tokens.isEmpty() && titleTokensMatched == tokens.size()) {
                 score += 15;
             }
@@ -393,7 +416,6 @@ public class RecipeService {
             }
         }
 
-        // Ordenar por pontuação decrescente (mais relevantes primeiro)
         return scored.stream()
                 .sorted((a, b) -> Integer.compare(b.score(), a.score()))
                 .map(ScoredRecipe::recipe)
@@ -408,20 +430,8 @@ public class RecipeService {
             .trim();
     }
 
-    /**
-     * Busca uma receita específica por ID e ChatId do usuário.
-     */
-    @Transactional(readOnly = true)
-    public Optional<Recipe> findRecipeByUserAndId(Long telegramChatId, Long recipeId) {
-        return recipeRepository.findByUserTelegramChatIdAndId(telegramChatId, recipeId);
-    }
-
-    /**
-     * Formata uma entidade Recipe em texto HTML seguro para envio no chat do Telegram.
-     */
     public String formatRecipeForTelegram(Recipe recipe) {
         StringBuilder sb = new StringBuilder();
-
         sb.append("🍽️ <b>").append(TelegramHtmlUtil.escapeHtml(recipe.getTitle()))
           .append("</b> <code>(ID: #").append(recipe.getId()).append(")</code>\n\n");
 
@@ -473,9 +483,6 @@ public class RecipeService {
         return sb.toString();
     }
 
-    /**
-     * Formata um resumo compacto de uma linha da receita para listagens e resultados múltiplos em HTML seguro.
-     */
     public String formatRecipeSummary(Recipe recipe) {
         StringBuilder sb = new StringBuilder();
         sb.append("• <code>[#").append(recipe.getId()).append("]</code> <b>")
@@ -489,184 +496,6 @@ public class RecipeService {
         return sb.toString();
     }
 
-    /**
-     * Retorna o feed público de receitas para a aba Explorar com cache em memória.
-     */
-    @Cacheable(value = "exploreRecipes", key = "#query != null ? #query.trim().toLowerCase() : 'all'")
-    public List<Recipe> getPublicRecipes(String query) {
-        if (query != null && !query.isBlank()) {
-            return recipeRepository.searchPublicRecipes(query.trim());
-        }
-        return recipeRepository.findAllPublicRecipes();
-    }
-
-    /**
-     * Busca receita por ID independente de usuário (para a Web).
-     */
-    public Optional<Recipe> findRecipeById(Long id) {
-        return recipeRepository.findById(id);
-    }
-
-    /**
-     * Deleta receita por ID diretamente (para a Web).
-     */
-    @Transactional
-    @Caching(evict = {
-        @CacheEvict(value = "exploreRecipes", allEntries = true),
-        @CacheEvict(value = "chefProfiles", allEntries = true)
-    })
-    public boolean deleteRecipeById(Long id) {
-        if (recipeRepository.existsById(id)) {
-            recipeRepository.deleteById(id);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Atualiza uma receita com dados manuais vindos da Web.
-     */
-    @Transactional
-    @Caching(evict = {
-        @CacheEvict(value = "exploreRecipes", allEntries = true),
-        @CacheEvict(value = "chefProfiles", allEntries = true)
-    })
-    public Recipe updateRecipeManual(Long id, ChefBot_Telegram.dto.RecipeUpdateRequestDTO dto) {
-        Recipe recipe = recipeRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Receita não encontrada com ID: " + id));
-
-        if (dto.title() != null && !dto.title().isBlank()) {
-            recipe.setTitle(dto.title().trim());
-        }
-        if (dto.category() != null) {
-            recipe.setCategory(dto.category().isBlank() ? null : normalizeCategory(dto.category()));
-        }
-        if (dto.sourceAuthor() != null) {
-            recipe.setSourceAuthor(dto.sourceAuthor().isBlank() ? null : dto.sourceAuthor().trim());
-        }
-        if (dto.prepTimeMinutes() != null) {
-            recipe.setPrepTimeMinutes(dto.prepTimeMinutes() > 0 ? dto.prepTimeMinutes() : null);
-        }
-        if (dto.portions() != null) {
-            recipe.setPortions(dto.portions() > 0 ? dto.portions() : null);
-        }
-        if (dto.isPublic() != null) {
-            recipe.setPublic(dto.isPublic());
-        }
-        if (dto.tags() != null) {
-            recipe.setTags(new ArrayList<>(dto.tags()));
-        }
-
-        if (dto.ingredients() != null) {
-            recipe.getIngredients().clear();
-            for (ChefBot_Telegram.dto.IngredientDTO ingDTO : dto.ingredients()) {
-                if (ingDTO.name() != null && !ingDTO.name().isBlank()) {
-                    Ingredient ingredient = new Ingredient();
-                    ingredient.setName(ingDTO.name().trim());
-                    ingredient.setQuantity(ingDTO.quantity());
-                    ingredient.setUnit(ingDTO.unit());
-                    ingredient.setNotes(ingDTO.notes());
-                    recipe.addIngredient(ingredient);
-                }
-            }
-        }
-
-        if (dto.instructions() != null) {
-            recipe.getInstructions().clear();
-            int step = 1;
-            for (ChefBot_Telegram.dto.InstructionDTO instDTO : dto.instructions()) {
-                if (instDTO.description() != null && !instDTO.description().isBlank()) {
-                    Instruction instruction = new Instruction();
-                    instruction.setStepNumber(instDTO.stepNumber() != null ? instDTO.stepNumber() : step);
-                    instruction.setInstructionText(instDTO.description().trim());
-                    recipe.addInstruction(instruction);
-                    step++;
-                }
-            }
-        }
-
-        return recipeRepository.saveAndFlush(recipe);
-    }
-
-    /**
-     * Alterna a visibilidade (pública / privada) de uma receita.
-     * Somente o proprietário da receita pode alternar.
-     */
-    @Transactional
-    @Caching(evict = {
-        @CacheEvict(value = "exploreRecipes", allEntries = true),
-        @CacheEvict(value = "chefProfiles", allEntries = true)
-    })
-    public Recipe toggleVisibility(Long telegramChatId, Long recipeId) {
-        Recipe recipe = recipeRepository.findByUserTelegramChatIdAndId(telegramChatId, recipeId)
-            .orElseThrow(() -> new IllegalArgumentException("Receita não encontrada para este usuário."));
-
-        recipe.setPublic(!recipe.isPublic());
-        return recipeRepository.save(recipe);
-    }
-
-    /**
-     * Duplica (fork) uma receita pública para a coleção pessoal do usuário autenticado.
-     * Incrementa o contador forkCount da receita original e define forkedFromUsername.
-     */
-    @Transactional
-    @Caching(evict = {
-        @CacheEvict(value = "exploreRecipes", allEntries = true),
-        @CacheEvict(value = "chefProfiles", allEntries = true)
-    })
-    public Recipe forkRecipe(User targetUser, Long sourceRecipeId) {
-        Recipe sourceRecipe = recipeRepository.findById(sourceRecipeId)
-            .orElseThrow(() -> new IllegalArgumentException("Receita não encontrada com ID: " + sourceRecipeId));
-
-        if (!sourceRecipe.isPublic()) {
-            throw new IllegalStateException("Esta receita é privada e não pode ser duplicada.");
-        }
-
-        // Incrementa o forkCount da receita original
-        sourceRecipe.setForkCount(sourceRecipe.getForkCount() + 1);
-        recipeRepository.save(sourceRecipe);
-
-        // Identifica o username do autor original
-        String originalAuthorUsername = resolveAuthorUsername(sourceRecipe);
-
-        // Cria a cópia independente
-        Recipe fork = new Recipe();
-        fork.setUser(targetUser);
-        fork.setTitle(sourceRecipe.getTitle());
-        fork.setCategory(sourceRecipe.getCategory());
-        fork.setSourceAuthor(sourceRecipe.getSourceAuthor());
-        fork.setPrepTimeMinutes(sourceRecipe.getPrepTimeMinutes());
-        fork.setPortions(sourceRecipe.getPortions());
-        fork.setRawTranscript(sourceRecipe.getRawTranscript());
-        fork.setPublic(true);
-        fork.setForkedFromUsername(originalAuthorUsername);
-        fork.setForkCount(0);
-        fork.setTags(new ArrayList<>(sourceRecipe.getTags()));
-
-        // Clona ingredientes
-        for (Ingredient originalIng : sourceRecipe.getIngredients()) {
-            Ingredient newIng = new Ingredient();
-            newIng.setName(originalIng.getName());
-            newIng.setQuantity(originalIng.getQuantity());
-            newIng.setUnit(originalIng.getUnit());
-            newIng.setNotes(originalIng.getNotes());
-            fork.addIngredient(newIng);
-        }
-
-        // Clona passos de instrução
-        for (Instruction originalInst : sourceRecipe.getInstructions()) {
-            Instruction newInst = new Instruction();
-            newInst.setStepNumber(originalInst.getStepNumber());
-            newInst.setInstructionText(originalInst.getInstructionText());
-            fork.addInstruction(newInst);
-        }
-
-        return recipeRepository.save(fork);
-    }
-
-    /**
-     * Descobre o username do criador da receita.
-     */
     public String resolveAuthorUsername(Recipe recipe) {
         if (recipe == null || recipe.getUser() == null) {
             return null;
@@ -679,20 +508,15 @@ public class RecipeService {
             return recipe.getUser().getName();
         }
 
-        // Se for um id virtual de usuário web (-1000000000 - appUserId)
         if (chatId <= -1000000000L) {
             Long appUserId = -chatId - 1000000000L;
             return appUserRepository.findById(appUserId)
-                .map(ChefBot_Telegram.model.AppUser::getUsername)
+                .map(AppUser::getUsername)
                 .orElse(recipe.getUser().getName());
         }
 
-        // Caso contrário, busca por telegramChatId
         return appUserRepository.findByTelegramChatId(chatId)
-            .map(ChefBot_Telegram.model.AppUser::getUsername)
+            .map(AppUser::getUsername)
             .orElse(recipe.getUser().getName());
     }
 }
-
-
-

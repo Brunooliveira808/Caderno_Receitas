@@ -36,21 +36,6 @@ public class Recipe {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "is_public", nullable = false)
-    private boolean isPublic = true;
-
-    @Column(name = "forked_from_username", length = 50)
-    private String forkedFromUsername;
-
-    @Column(name = "fork_count", nullable = false)
-    private long forkCount = 0;
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "recipe_tags", joinColumns = @JoinColumn(name = "recipe_id"))
-    @Column(name = "tag", length = 50)
-    @org.hibernate.annotations.Fetch(org.hibernate.annotations.FetchMode.SUBSELECT)
-    private List<String> tags = new ArrayList<>();
-
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @org.hibernate.annotations.Fetch(org.hibernate.annotations.FetchMode.SUBSELECT)
     private List<Ingredient> ingredients = new ArrayList<>();
@@ -58,7 +43,6 @@ public class Recipe {
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @org.hibernate.annotations.Fetch(org.hibernate.annotations.FetchMode.SUBSELECT)
     private List<Instruction> instructions = new ArrayList<>();
-
 
     public Recipe() {}
 
@@ -110,16 +94,4 @@ public class Recipe {
 
     public List<Instruction> getInstructions() { return instructions; }
     public void setInstructions(List<Instruction> instructions) { this.instructions = instructions; }
-
-    public boolean isPublic() { return isPublic; }
-    public void setPublic(boolean isPublic) { this.isPublic = isPublic; }
-
-    public String getForkedFromUsername() { return forkedFromUsername; }
-    public void setForkedFromUsername(String forkedFromUsername) { this.forkedFromUsername = forkedFromUsername; }
-
-    public long getForkCount() { return forkCount; }
-    public void setForkCount(long forkCount) { this.forkCount = forkCount; }
-
-    public List<String> getTags() { return tags; }
-    public void setTags(List<String> tags) { this.tags = tags != null ? tags : new ArrayList<>(); }
 }

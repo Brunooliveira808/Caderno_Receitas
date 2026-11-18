@@ -107,67 +107,7 @@
     </header>
 
     <!-- ========================================== -->
-    <!-- ABA 1: EXPLORAR (Esquerda)                 -->
-    <!-- ========================================== -->
-    <section id="tab-explore" class="hidden flex-1 p-4 flex-col">
-      <!-- Barra de Busca do Explorar -->
-      <div class="relative mb-3">
-        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
-          <i data-lucide="search" class="w-4 h-4"></i>
-        </div>
-        <input 
-          id="explore-search-input" 
-          type="text" 
-          placeholder="Buscar receitas públicas ou @chefs..." 
-          oninput="handleExploreSearch(this.value)"
-          class="w-full pl-10 pr-9 py-2.5 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white rounded-2xl text-sm text-neutral-800 placeholder-neutral-400 border border-transparent focus:border-amber-400 focus:outline-none transition shadow-inner"
-        />
-        <button 
-          id="btn-clear-explore-search" 
-          onclick="clearExploreSearch()" 
-          class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-400 hover:text-neutral-600 transition">
-          <i data-lucide="x-circle" class="w-4 h-4"></i>
-        </button>
-      </div>
-
-      <!-- Seção de Chefs Encontrados (quando busca) -->
-      <div id="explore-chefs-section" class="hidden mb-4">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2 flex items-center gap-1.5">
-          <i data-lucide="users" class="w-3.5 h-3.5"></i> Chefs na Comunidade
-        </h3>
-        <div id="explore-chefs-list" class="flex gap-2 overflow-x-auto hide-scrollbar py-1">
-          <!-- Chips de chefs encontrados -->
-        </div>
-      </div>
-
-      <!-- Feed de Receitas Públicas -->
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
-          <i data-lucide="compass" class="w-3.5 h-3.5 text-amber-500"></i> Feed da Comunidade
-        </h3>
-        <span id="explore-count" class="text-[11px] text-neutral-400 font-medium"></span>
-      </div>
-
-      <div id="explore-loading" class="hidden flex flex-col items-center justify-center py-12 gap-3 text-neutral-400">
-        <div class="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-xs font-medium">Explorando criações culinárias...</p>
-      </div>
-
-      <div id="explore-empty-state" class="hidden flex flex-col items-center justify-center py-16 px-6 text-center">
-        <div class="w-14 h-14 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mb-3">
-          <i data-lucide="sparkles" class="w-7 h-7"></i>
-        </div>
-        <h3 class="font-bold text-neutral-800 text-sm">Nenhuma receita encontrada</h3>
-        <p class="text-xs text-neutral-500 mt-1 max-w-xs">Seja o primeiro da comunidade a compartilhar pratos incríveis!</p>
-      </div>
-
-      <div id="explore-recipe-list" class="flex flex-col gap-3">
-        <!-- Cards públicos inseridos dinamicamente -->
-      </div>
-    </section>
-
-    <!-- ========================================== -->
-    <!-- ABA 2: MINHAS RECEITAS (Centro)            -->
+    <!-- ABA: MINHAS RECEITAS                       -->
     <!-- ========================================== -->
     <section id="tab-my-recipes" class="flex-1 p-4 flex flex-col">
       <!-- BOTÃO NOVO: [➕ Adicionar Receita] (Exclusivo desta aba, acima do caderno) -->
@@ -272,20 +212,10 @@
           </div>
         </div>
 
-        <!-- Estatísticas Sociais Estilo Instagram -->
-        <div class="grid grid-cols-3 gap-2 bg-neutral-50 border border-neutral-100 rounded-2xl p-3 text-center">
-          <div class="flex flex-col">
-            <span id="stat-recipes-count" class="font-black text-lg text-neutral-900">0</span>
-            <span class="text-[11px] text-neutral-500 font-medium">Receitas</span>
-          </div>
-          <div class="flex flex-col border-x border-neutral-200/60">
-            <span id="stat-followers-count" class="font-black text-lg text-neutral-900">0</span>
-            <span class="text-[11px] text-neutral-500 font-medium">Seguidores</span>
-          </div>
-          <div class="flex flex-col">
-            <span id="stat-following-count" class="font-black text-lg text-neutral-900">0</span>
-            <span class="text-[11px] text-neutral-500 font-medium">Seguindo</span>
-          </div>
+        <!-- Estatística de Receitas -->
+        <div class="bg-neutral-50 border border-neutral-100 rounded-2xl p-4 text-center">
+          <span id="stat-recipes-count" class="font-black text-2xl text-amber-500">0</span>
+          <span class="block text-xs text-neutral-500 font-medium mt-1">Receitas no seu Caderno</span>
         </div>
 
         <!-- Cartão de Ações / Status -->
@@ -297,7 +227,7 @@
             </span>
           </div>
           <p class="text-xs text-neutral-600 leading-relaxed">
-            Compartilhe receitas com a comunidade definindo suas receitas como públicas no seu caderno pessoal.
+            Seu caderno de receitas pessoal sincronizado e protegido na nuvem.
           </p>
         </div>
 
@@ -327,24 +257,20 @@
     <!-- ============================================================== -->
     <!-- BARRA FIXA INFERIOR (BOTTOM NAVIGATION BAR AMARELA COM ITENS BRANCOS) -->
     <!-- ============================================================== -->
-    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-amber-400 border-t border-amber-300 px-6 py-2.5 flex items-center justify-between z-40 safe-bottom shadow-xl">
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-amber-400 border-t border-amber-300 px-8 py-2.5 flex items-center justify-around z-40 safe-bottom shadow-xl">
       
-      <!-- 1. Explorar (Esquerda) -->
-      <button onclick="switchTab('explore')" id="nav-btn-explore" class="nav-tab flex flex-col items-center gap-1 text-white/80 hover:text-white transition flex-1">
-        <i data-lucide="compass" class="w-6 h-6"></i>
-        <span class="text-[10px] font-bold">Explorar</span>
-      </button>
-
-      <!-- 2. Minhas Receitas (Centro) -->
+      <!-- 1. Minhas Receitas -->
       <button onclick="switchTab('my-recipes')" id="nav-btn-my-recipes" class="nav-tab flex flex-col items-center gap-1 text-white transition flex-1 font-extrabold scale-105">
-        <div class="relative">
-          <i data-lucide="book-open" class="w-6 h-6"></i>
-          <span class="w-2 h-2 rounded-full bg-white absolute -top-0.5 -right-0.5 shadow-sm"></span>
-        </div>
+        <i data-lucide="book-open" class="w-6 h-6"></i>
         <span class="text-[10px] font-extrabold tracking-wide">Minhas Receitas</span>
       </button>
 
-      <!-- 3. Meu Perfil (Direita) -->
+      <!-- 2. Botão Adicionar (+) Central -->
+      <button onclick="openAddModal()" class="flex flex-col items-center justify-center -mt-6 bg-white text-amber-500 w-12 h-12 rounded-full shadow-lg border-2 border-amber-400 hover:scale-105 active:scale-95 transition">
+        <i data-lucide="plus" class="w-6 h-6 stroke-[3]"></i>
+      </button>
+
+      <!-- 3. Meu Perfil -->
       <button onclick="switchTab('profile')" id="nav-btn-profile" class="nav-tab flex flex-col items-center gap-1 text-white/80 hover:text-white transition flex-1">
         <i data-lucide="user" class="w-6 h-6"></i>
         <span class="text-[10px] font-bold">Meu Perfil</span>
@@ -372,8 +298,6 @@
             </div>
             <h2 id="detail-title" class="text-2xl font-black text-neutral-900 mt-2 leading-tight"></h2>
             
-            <p id="detail-fork-info" class="hidden text-xs text-amber-700 font-medium mt-1 flex items-center gap-1"></p>
-
             <div class="flex items-center gap-4 text-xs text-neutral-500 mt-2">
               <span id="detail-time" class="flex items-center gap-1"></span>
               <span id="detail-portions" class="flex items-center gap-1"></span>
@@ -384,9 +308,6 @@
             <i data-lucide="x" class="w-6 h-6"></i>
           </button>
         </div>
-
-        <!-- Chips de Tags -->
-        <div id="detail-tags-container" class="flex flex-wrap gap-1.5 mt-3"></div>
 
         <hr class="my-4 border-neutral-100">
 
@@ -416,12 +337,6 @@
 
         <!-- Ações do Modal -->
         <div class="mt-8 pt-4 border-t border-neutral-100 flex gap-2">
-          <!-- Botão Puxar (aparece no Explorar) -->
-          <button id="btn-fork-detail" onclick="forkSelectedRecipe()" class="hidden flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl flex items-center justify-center gap-2 shadow-sm transition">
-            <i data-lucide="download" class="w-4 h-4"></i> Puxar para Minhas Receitas
-          </button>
-
-          <!-- Botões do dono (Minhas Receitas) -->
           <button id="btn-edit-detail" class="flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl flex items-center justify-center gap-2 shadow-sm transition">
             <i data-lucide="pencil" class="w-4 h-4"></i> Editar
           </button>
@@ -526,22 +441,14 @@
                 <option value="molho">Molho</option>
               </select>
             </div>
+          <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block font-bold mb-1 text-neutral-800">Tempo (minutos)</label>
               <input type="number" id="edit-prep-time" min="1" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
             </div>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block font-bold mb-1 text-neutral-800">Porções</label>
               <input type="number" id="edit-portions" min="1" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400">
-            </div>
-            <div>
-              <label class="block font-bold mb-1 text-neutral-800">Visibilidade</label>
-              <select id="edit-visibility" class="w-full p-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-amber-400 bg-white font-semibold">
-                <option value="true">🌐 Pública (Comunidade)</option>
-                <option value="false">🔒 Privada (Apenas Eu)</option>
-              </select>
             </div>
           </div>
           <div>
@@ -751,485 +658,51 @@
       return headers;
     }
 
-    // 1. NAVEGAÇÃO ENTRE AS ABAS ESTILO INSTAGRAM
+    // 1. NAVEGAÇÃO ENTRE AS ABAS
     function switchTab(tab) {
       activeTab = tab;
       
-      const tabExplore = document.getElementById('tab-explore');
       const tabMyRecipes = document.getElementById('tab-my-recipes');
       const tabProfile = document.getElementById('tab-profile');
       
-      const navBtnExplore = document.getElementById('nav-btn-explore');
       const navBtnMyRecipes = document.getElementById('nav-btn-my-recipes');
       const navBtnProfile = document.getElementById('nav-btn-profile');
 
       const titleEl = document.getElementById('app-header-title');
       const subtitleEl = document.getElementById('app-header-subtitle');
 
-      // Oculta todas
-      tabExplore.classList.add('hidden');
       tabMyRecipes.classList.add('hidden');
       tabProfile.classList.add('hidden');
 
-      // Reseta classes nos botões para a barra amarela com itens brancos
-      [navBtnExplore, navBtnMyRecipes, navBtnProfile].forEach(btn => {
-        btn.className = "nav-tab flex flex-col items-center gap-1 text-white/70 hover:text-white transition flex-1";
+      [navBtnMyRecipes, navBtnProfile].forEach(btn => {
+        if (btn) btn.className = "nav-tab flex flex-col items-center gap-1 text-white/70 hover:text-white transition flex-1";
       });
 
-      if (tab === 'explore') {
-        tabExplore.classList.remove('hidden');
-        navBtnExplore.className = "nav-tab flex flex-col items-center gap-1 text-white transition flex-1 font-extrabold scale-105";
-        titleEl.innerHTML = `Explorar <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>`;
-        subtitleEl.innerText = "Descubra receitas e chefs da comunidade";
-        fetchExploreRecipes();
-      } else if (tab === 'my-recipes') {
+      if (tab === 'profile') {
+        tabProfile.classList.remove('hidden');
+        if (navBtnProfile) navBtnProfile.className = "nav-tab flex flex-col items-center gap-1 text-white transition flex-1 font-extrabold scale-105";
+        titleEl.innerHTML = `Meu Perfil <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>`;
+        subtitleEl.innerText = "Sua conta e dados pessoais";
+        loadUserProfile();
+      } else {
         tabMyRecipes.classList.remove('hidden');
-        navBtnMyRecipes.className = "nav-tab flex flex-col items-center gap-1 text-white transition flex-1 font-extrabold scale-105";
+        if (navBtnMyRecipes) navBtnMyRecipes.className = "nav-tab flex flex-col items-center gap-1 text-white transition flex-1 font-extrabold scale-105";
         titleEl.innerHTML = `Minhas Receitas <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>`;
         subtitleEl.innerText = "Seu acervo culinário pessoal";
         fetchRecipes();
-      } else if (tab === 'profile') {
-        tabProfile.classList.remove('hidden');
-        navBtnProfile.className = "nav-tab flex flex-col items-center gap-1 text-white transition flex-1 font-extrabold scale-105";
-        titleEl.innerHTML = `Meu Perfil <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>`;
-        subtitleEl.innerText = "Sua conta e estatísticas culinárias";
-        loadUserProfile();
       }
 
       lucide.createIcons();
     }
 
     function refreshActiveTab() {
-      if (activeTab === 'explore') fetchExploreRecipes();
-      else if (activeTab === 'my-recipes') fetchRecipes();
-      else if (activeTab === 'profile') loadUserProfile();
+      if (activeTab === 'profile') loadUserProfile();
+      else fetchRecipes();
     }
 
-    // 2. ABA EXPLORAR: Feed público e busca com Stale-While-Revalidate (SWR)
-    async function fetchExploreRecipes() {
-      const loading = document.getElementById('explore-loading');
-      const emptyState = document.getElementById('explore-empty-state');
-      const container = document.getElementById('explore-recipe-list');
-      const countEl = document.getElementById('explore-count');
 
-      // 1. Instant Boot: se não houver busca ativa, tenta renderizar do cache imediatamente (0ms)
-      const isFiltered = (exploreSearchQuery && exploreSearchQuery.length > 0);
-      const cached = !isFiltered ? CacheManager.get(CacheManager.KEYS.EXPLORE) : null;
-      if (cached && Array.isArray(cached) && cached.length > 0) {
-        exploreRecipesList = cached;
-        renderExploreRecipes(exploreRecipesList);
-        countEl.innerText = `${exploreRecipesList.length} receitas públicas`;
-        loading.classList.add('hidden');
-      } else {
-        if (!exploreRecipesList || exploreRecipesList.length === 0) {
-          loading.classList.remove('hidden');
-        }
-      }
 
-      setSyncIndicator(true);
-
-      try {
-        const url = '/api/recipes/explore' + (exploreSearchQuery ? `?query=${encodeURIComponent(exploreSearchQuery)}` : '');
-        const res = await fetch(url, { headers: authHeaders() });
-        if (!res.ok) throw new Error('Falha ao carregar explorar');
-        const freshData = await res.json();
-        
-        loading.classList.add('hidden');
-        exploreRecipesList = freshData;
-        countEl.innerText = `${exploreRecipesList.length} receitas públicas`;
-
-        if (!isFiltered) {
-          CacheManager.set(CacheManager.KEYS.EXPLORE, freshData);
-        }
-
-        renderExploreRecipes(exploreRecipesList);
-      } catch (e) {
-        console.warn('Erro ao atualizar feed de explorar:', e);
-        loading.classList.add('hidden');
-        if (!exploreRecipesList || exploreRecipesList.length === 0) {
-          emptyState.classList.remove('hidden');
-        }
-      } finally {
-        setSyncIndicator(false);
-        lucide.createIcons();
-      }
-    }
-
-    function renderExploreRecipes(recipes) {
-      const emptyState = document.getElementById('explore-empty-state');
-      const container = document.getElementById('explore-recipe-list');
-      container.innerHTML = '';
-
-      if (!recipes || recipes.length === 0) {
-        emptyState.classList.remove('hidden');
-        return;
-      }
-      emptyState.classList.add('hidden');
-
-      recipes.forEach(r => {
-        const card = document.createElement('div');
-        card.className = "bg-white border border-neutral-100 rounded-3xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between cursor-pointer border-l-4 border-l-amber-500";
-        card.onclick = (e) => {
-          if (!e.target.closest('.action-btn')) {
-            openDetailsModal(r, true);
-          }
-        };
-
-        const author = r.authorUsername ? `@${r.authorUsername}` : (r.sourceAuthor || 'Chef Anônimo');
-        const prepTime = r.prepTimeMinutes ? `${r.prepTimeMinutes} min` : 'Tempo livre';
-        const forkCount = r.forkCount || 0;
-
-        card.innerHTML = `
-          <div class="flex items-start justify-between gap-2">
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900">
-                  ${r.category || 'Geral'}
-                </span>
-                <span class="text-xs text-amber-700 font-semibold flex items-center gap-0.5">
-                  <i data-lucide="user" class="w-3 h-3"></i> ${author}
-                </span>
-              </div>
-              <h3 class="font-bold text-base text-neutral-900 leading-snug">${r.title || 'Receita sem título'}</h3>
-            </div>
-
-            <!-- Botão Puxar para Minhas Receitas -->
-            <div class="action-btn">
-              <button id="btn-fork-${r.id}" onclick="forkRecipe(${r.id}, event)" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-200 shadow-sm" title="Puxar para meu caderno">
-                <i data-lucide="download" class="w-3.5 h-3.5 text-amber-700"></i>
-                <span class="btn-text">Puxar</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="mt-4 flex items-center justify-between text-xs text-neutral-500 pt-2 border-t border-neutral-100">
-            <span class="flex items-center gap-1">
-              <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i>
-              ${prepTime}
-            </span>
-            <span class="flex items-center gap-1 text-amber-800 font-medium">
-              <i data-lucide="git-fork" class="w-3.5 h-3.5"></i>
-              <span id="fork-count-${r.id}">${forkCount}</span> salvamentos
-            </span>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-      lucide.createIcons();
-    }
-
-    function handleExploreSearch(val) {
-      clearTimeout(exploreDebounceTimeout);
-      const clearBtn = document.getElementById('btn-clear-explore-search');
-      if (val && val.trim().length > 0) {
-        clearBtn.classList.remove('hidden');
-      } else {
-        clearBtn.classList.add('hidden');
-      }
-
-      exploreDebounceTimeout = setTimeout(() => {
-        exploreSearchQuery = val.trim();
-        fetchExploreRecipes();
-        if (exploreSearchQuery) {
-          searchChefsSection(exploreSearchQuery);
-        } else {
-          document.getElementById('explore-chefs-section').classList.add('hidden');
-        }
-      }, 300);
-    }
-
-    function clearExploreSearch() {
-      document.getElementById('explore-search-input').value = '';
-      document.getElementById('btn-clear-explore-search').classList.add('hidden');
-      document.getElementById('explore-chefs-section').classList.add('hidden');
-      exploreSearchQuery = '';
-      fetchExploreRecipes();
-    }
-
-    async function searchChefsSection(query) {
-      try {
-        const res = await fetch(`/api/users/search?query=${encodeURIComponent(query)}`, { headers: authHeaders() });
-        if (!res.ok) return;
-        const chefs = await res.json();
-        const section = document.getElementById('explore-chefs-section');
-        const list = document.getElementById('explore-chefs-list');
-        list.innerHTML = '';
-
-        if (!chefs || chefs.length === 0) {
-          section.classList.add('hidden');
-          return;
-        }
-
-        section.classList.remove('hidden');
-        chefs.forEach(c => {
-          const chip = document.createElement('div');
-          chip.className = "flex items-center gap-2 bg-neutral-50 border border-neutral-200 px-3 py-1.5 rounded-2xl whitespace-nowrap text-xs shadow-sm";
-          chip.innerHTML = `
-            <div class="w-6 h-6 rounded-full bg-amber-400 text-amber-950 font-bold flex items-center justify-center text-[10px]">
-              ${c.name ? c.name.charAt(0).toUpperCase() : 'C'}
-            </div>
-            <div>
-              <span class="font-bold text-neutral-800">${c.name}</span>
-              <span class="text-[10px] text-amber-700 block">@${c.username}</span>
-            </div>
-            ${!c.isSelf ? `
-              <button id="btn-follow-${c.username}" onclick="toggleFollowChef('${c.username}', event)" class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition ${c.isFollowing ? 'bg-neutral-200 text-neutral-700' : 'bg-amber-400 text-amber-950'}">
-                ${c.isFollowing ? 'Seguindo' : 'Seguir'}
-              </button>
-            ` : ''}
-          `;
-          list.appendChild(chip);
-        });
-      } catch (e) {
-        console.warn('Erro ao buscar chefs:', e);
-      }
-    }
-
-    async function toggleFollowChef(username, event) {
-      if (event) event.stopPropagation();
-      if (!getAuthToken()) {
-        openAuthModal();
-        return;
-      }
-
-      // 1. Atualização Otimista Imediata (0ms)
-      const btn = document.getElementById(`btn-follow-${username}`);
-      let previousIsFollowing = false;
-      if (btn) {
-        previousIsFollowing = btn.innerText.trim().toLowerCase().includes('seguindo');
-        const nextIsFollowing = !previousIsFollowing;
-        btn.innerText = nextIsFollowing ? 'Seguindo' : 'Seguir';
-        btn.className = `ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition ${nextIsFollowing ? 'bg-neutral-200 text-neutral-700' : 'bg-amber-400 text-amber-950'}`;
-      }
-
-      // Se estiver na aba Meu Perfil e o chef for o próprio ou afetar stats, atualiza contagem
-      const followingCountEl = document.getElementById('stat-following-count');
-      let prevCount = null;
-      if (followingCountEl) {
-        prevCount = parseInt(followingCountEl.innerText) || 0;
-        followingCountEl.innerText = previousIsFollowing ? Math.max(0, prevCount - 1) : (prevCount + 1);
-      }
-
-      showToast(previousIsFollowing ? `Você deixou de seguir @${username}` : `Agora você está seguindo @${username}!`, 'info', 1800);
-
-      // 2. Requisição em background
-      try {
-        const res = await fetch(`/api/users/${username}/follow`, {
-          method: 'POST',
-          headers: authHeaders()
-        });
-
-        if (res.ok) {
-          // Atualiza dados silenciosamente em background se necessário
-          if (activeTab === 'profile') loadUserProfile();
-        } else {
-          // 3. Rollback em caso de erro na resposta
-          const data = await res.json().catch(() => ({}));
-          rollbackFollowState(username, btn, previousIsFollowing, followingCountEl, prevCount);
-          showToast(data.error || 'Não foi possível atualizar. Verifique sua conexão.', 'error', 3000);
-        }
-      } catch (e) {
-        // Rollback em caso de falha de rede/timeout
-        rollbackFollowState(username, btn, previousIsFollowing, followingCountEl, prevCount);
-        showToast('Não foi possível atualizar. Verifique sua conexão.', 'error', 3000);
-      }
-    }
-
-    function rollbackFollowState(username, btn, wasFollowing, countEl, prevCount) {
-      if (btn) {
-        btn.innerText = wasFollowing ? 'Seguindo' : 'Seguir';
-        btn.className = `ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition ${wasFollowing ? 'bg-neutral-200 text-neutral-700' : 'bg-amber-400 text-amber-950'}`;
-      }
-      if (countEl && prevCount !== null) {
-        countEl.innerText = prevCount;
-      }
-    }
-
-    // 3. CLONAR RECEITA (FORK) OTIMISTA COM MICRO-INTERAÇÃO
-    async function forkRecipe(recipeId, event) {
-      if (event) event.stopPropagation();
-      if (!getAuthToken()) {
-        openAuthModal();
-        return;
-      }
-
-      // 1. Otimismo imediato (0ms): busca elemento do botão no feed e/ou modal
-      const btn = document.getElementById(`btn-fork-${recipeId}`);
-      const btnDetail = document.getElementById('btn-fork-detail');
-      const forkCountEl = document.getElementById(`fork-count-${recipeId}`);
-      
-      let prevBtnHtml = null;
-      let prevCount = null;
-
-      if (btn) {
-        prevBtnHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.className = "px-3 py-1.5 bg-emerald-50 text-emerald-800 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-emerald-300 shadow-sm cursor-default";
-        btn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i><span>Salva!</span>`;
-      }
-
-      if (btnDetail && selectedRecipe && selectedRecipe.id === recipeId) {
-        btnDetail.disabled = true;
-        btnDetail.className = "flex-1 py-3 bg-emerald-500 text-white font-bold rounded-2xl flex items-center justify-center gap-2 shadow-sm transition cursor-default";
-        btnDetail.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Receita Salva!`;
-      }
-
-      if (forkCountEl) {
-        prevCount = parseInt(forkCountEl.innerText) || 0;
-        forkCountEl.innerText = prevCount + 1;
-      }
-      lucide.createIcons();
-
-      // Injeta imediatamente no cache local de Minhas Receitas (SWR Instant Boot)
-      const targetRecipe = (exploreRecipesList && exploreRecipesList.find(r => r.id === recipeId)) || selectedRecipe;
-      if (targetRecipe) {
-        const clonedRecipe = {
-          ...targetRecipe,
-          id: -Date.now(), // ID temporário até revalidar
-          forkedFromUsername: targetRecipe.authorUsername || targetRecipe.sourceAuthor || 'comunidade',
-          isPublic: false
-        };
-        allRecipes = [clonedRecipe, ...allRecipes];
-        CacheManager.set(CacheManager.KEYS.MY_RECIPES, allRecipes);
-      }
-
-      showToast('🎉 Receita salva no seu caderno!', 'success', 2200);
-
-      // 2. Requisição em background
-      try {
-        const res = await fetch(`/api/recipes/${recipeId}/fork`, {
-          method: 'POST',
-          headers: authHeaders()
-        });
-
-        if (res.ok) {
-          const freshCreated = await res.json().catch(() => null);
-          if (freshCreated && freshCreated.id) {
-            // Substitui o clone temporário pelo objeto real retornado pela API
-            allRecipes = allRecipes.map(r => (r.id < 0 ? freshCreated : r));
-            CacheManager.set(CacheManager.KEYS.MY_RECIPES, allRecipes);
-          }
-        } else {
-          const data = await res.json().catch(() => ({}));
-          rollbackForkState(recipeId, btn, prevBtnHtml, btnDetail, forkCountEl, prevCount);
-          showToast(data.error || 'Não foi possível puxar a receita.', 'error', 3000);
-        }
-      } catch (e) {
-        rollbackForkState(recipeId, btn, prevBtnHtml, btnDetail, forkCountEl, prevCount);
-        showToast('Falha na conexão ao salvar receita.', 'error', 3000);
-      }
-    }
-
-    function rollbackForkState(recipeId, btn, prevBtnHtml, btnDetail, countEl, prevCount) {
-      if (btn && prevBtnHtml) {
-        btn.disabled = false;
-        btn.className = "px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-200 shadow-sm";
-        btn.innerHTML = prevBtnHtml;
-      }
-      if (btnDetail) {
-        btnDetail.disabled = false;
-        btnDetail.className = "flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl flex items-center justify-center gap-2 shadow-sm transition";
-        btnDetail.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i> Puxar para Minhas Receitas`;
-      }
-      if (countEl && prevCount !== null) {
-        countEl.innerText = prevCount;
-      }
-      // Remove do cache/lista local o item temporário adicionado
-      allRecipes = allRecipes.filter(r => r.id > 0);
-      CacheManager.set(CacheManager.KEYS.MY_RECIPES, allRecipes);
-      lucide.createIcons();
-    }
-
-    function forkSelectedRecipe() {
-      if (selectedRecipe) {
-        forkRecipe(selectedRecipe.id);
-        setTimeout(() => closeDetailsModal(), 600);
-      }
-    }
-
-    // 4. ALTERNAR VISIBILIDADE (PÚBLICA / PRIVADA) OTIMISTA
-    async function toggleRecipeVisibility(recipeId, event) {
-      if (event) event.stopPropagation();
-      
-      // Encontra a receita na memória
-      const recipe = allRecipes.find(r => r.id === recipeId);
-      const prevPublicState = recipe ? (recipe.isPublic !== false) : true;
-      const nextPublicState = !prevPublicState;
-
-      // 1. Atualização Otimista Imediata (0ms)
-      if (recipe) {
-        recipe.isPublic = nextPublicState;
-        CacheManager.set(CacheManager.KEYS.MY_RECIPES, allRecipes);
-      }
-
-      // Atualiza botão no card da lista
-      const badgeBtn = document.getElementById(`vis-badge-${recipeId}`);
-      if (badgeBtn) {
-        badgeBtn.className = `action-btn px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 transition ${nextPublicState ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-neutral-100 text-neutral-600 border border-neutral-200'}`;
-        badgeBtn.innerHTML = `
-          <i data-lucide="${nextPublicState ? 'globe' : 'lock'}" class="w-3 h-3"></i>
-          <span>${nextPublicState ? 'Pública' : 'Privada'}</span>
-        `;
-      }
-
-      // Se o modal de detalhes estiver aberto com essa receita
-      if (selectedRecipe && selectedRecipe.id === recipeId) {
-        selectedRecipe.isPublic = nextPublicState;
-        const detailBadge = document.getElementById('detail-visibility-badge');
-        if (detailBadge) {
-          detailBadge.innerText = nextPublicState ? '🌐 Pública' : '🔒 Privada';
-          detailBadge.className = `px-2 py-0.5 rounded-md text-xs font-bold ${nextPublicState ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-100 text-neutral-600'}`;
-        }
-      }
-      lucide.createIcons();
-
-      showToast(nextPublicState ? 'Receita agora está Pública na comunidade 🌐' : 'Receita definida como Privada 🔒', 'info', 2000);
-
-      // 2. Requisição em background
-      try {
-        const res = await fetch(`/api/recipes/${recipeId}/visibility`, {
-          method: 'PATCH',
-          headers: authHeaders()
-        });
-
-        if (!res.ok) {
-          // 3. Rollback
-          rollbackVisibility(recipeId, prevPublicState);
-          showToast('Erro ao atualizar visibilidade. Revertendo...', 'error', 3000);
-        }
-      } catch (e) {
-        // Rollback
-        rollbackVisibility(recipeId, prevPublicState);
-        showToast('Falha na rede. Visibilidade restaurada.', 'error', 3000);
-      }
-    }
-
-    function rollbackVisibility(recipeId, originalState) {
-      const recipe = allRecipes.find(r => r.id === recipeId);
-      if (recipe) {
-        recipe.isPublic = originalState;
-        CacheManager.set(CacheManager.KEYS.MY_RECIPES, allRecipes);
-      }
-      const badgeBtn = document.getElementById(`vis-badge-${recipeId}`);
-      if (badgeBtn) {
-        badgeBtn.className = `action-btn px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 transition ${originalState ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-neutral-100 text-neutral-600 border border-neutral-200'}`;
-        badgeBtn.innerHTML = `
-          <i data-lucide="${originalState ? 'globe' : 'lock'}" class="w-3 h-3"></i>
-          <span>${originalState ? 'Pública' : 'Privada'}</span>
-        `;
-      }
-      if (selectedRecipe && selectedRecipe.id === recipeId) {
-        selectedRecipe.isPublic = originalState;
-        const detailBadge = document.getElementById('detail-visibility-badge');
-        if (detailBadge) {
-          detailBadge.innerText = originalState ? '🌐 Pública' : '🔒 Privada';
-          detailBadge.className = `px-2 py-0.5 rounded-md text-xs font-bold ${originalState ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-100 text-neutral-600'}`;
-        }
-      }
-      lucide.createIcons();
-    }
-
-    // 5. ABA MINHAS RECEITAS (Caderno Pessoal com SWR e Instant Boot)
+    // 2. ABA MINHAS RECEITAS (Caderno Pessoal)
     async function fetchRecipes() {
       const isFiltered = (currentFilter !== 'Todos' || (searchQuery && searchQuery.length > 0));
 
@@ -1313,8 +786,6 @@
 
         const categoryTag = r.category ? r.category : 'Receita';
         const prepTime = r.prepTimeMinutes ? `${r.prepTimeMinutes} min` : 'Tempo livre';
-        const isPub = (r.isPublic !== false);
-        const forkedNotice = r.forkedFromUsername ? `<span class="text-[10px] text-neutral-400 flex items-center gap-1"><i data-lucide="git-fork" class="w-3 h-3 text-amber-600"></i> Inspirada em @${r.forkedFromUsername}</span>` : '';
 
         card.innerHTML = `
           <div class="flex items-start justify-between gap-2">
@@ -1323,16 +794,9 @@
                 <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900">
                   ${categoryTag}
                 </span>
-                
-                <!-- Badge de Visibilidade Clicável -->
-                <button id="vis-badge-${r.id}" onclick="toggleRecipeVisibility(${r.id}, event)" class="action-btn px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 transition ${isPub ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-neutral-100 text-neutral-600 border border-neutral-200'}" title="Clique para alternar">
-                  <i data-lucide="${isPub ? 'globe' : 'lock'}" class="w-3 h-3"></i>
-                  <span>${isPub ? 'Pública' : 'Privada'}</span>
-                </button>
               </div>
 
               <h3 class="font-bold text-base text-neutral-900 leading-snug">${r.title || 'Receita sem título'}</h3>
-              ${forkedNotice}
             </div>
             
             <!-- Botões de Ação Rápida -->
@@ -1353,6 +817,10 @@
             </span>
             <span class="flex items-center gap-1">
               <i data-lucide="shopping-basket" class="w-3.5 h-3.5 text-neutral-400"></i>
+              ${r.ingredients ? r.ingredients.length : 0} ingredientes
+            </span>
+          </div>
+        `;
               ${r.ingredients ? r.ingredients.length : 0} ingredientes
             </span>
           </div>
@@ -1399,6 +867,7 @@
     }
 
     // 6. ABA PERFIL (Carregar dados do usuário com cache SWR)
+    // 6. PERFIL DO USUÁRIO
     async function loadUserProfile() {
       const loggedView = document.getElementById('profile-logged-view');
       const guestView = document.getElementById('profile-guest-view');
@@ -1407,19 +876,6 @@
         loggedView.classList.add('hidden');
         guestView.classList.remove('hidden');
         return;
-      }
-
-      // 1. Instant Boot do perfil a partir do cache
-      const cachedProfile = CacheManager.get(CacheManager.KEYS.PROFILE);
-      if (cachedProfile && cachedProfile.username) {
-        document.getElementById('profile-avatar-initial').innerText = (cachedProfile.name || 'C').charAt(0).toUpperCase();
-        document.getElementById('profile-name').innerText = cachedProfile.name || 'Chef';
-        document.getElementById('profile-username').innerText = '@' + cachedProfile.username;
-        document.getElementById('stat-recipes-count').innerText = cachedProfile.recipesCount || 0;
-        document.getElementById('stat-followers-count').innerText = cachedProfile.followersCount || 0;
-        document.getElementById('stat-following-count').innerText = cachedProfile.followingCount || 0;
-        guestView.classList.add('hidden');
-        loggedView.classList.remove('hidden');
       }
 
       try {
@@ -1431,29 +887,17 @@
         }
         currentUser = await meRes.json();
 
-        // Buscar estatísticas completas de seguidor e contagens
-        const profileRes = await fetch(`/api/users/${currentUser.username}`, { headers: authHeaders() });
-        const profileData = profileRes.ok ? await profileRes.json() : null;
-
         document.getElementById('profile-avatar-initial').innerText = (currentUser.name || 'C').charAt(0).toUpperCase();
         document.getElementById('profile-name').innerText = currentUser.name || 'Chef';
         document.getElementById('profile-username').innerText = currentUser.username ? ('@' + currentUser.username) : '@chef';
         document.getElementById('profile-email').innerText = currentUser.email || '';
-
-        if (profileData) {
-          document.getElementById('stat-recipes-count').innerText = profileData.recipesCount || 0;
-          document.getElementById('stat-followers-count').innerText = profileData.followersCount || 0;
-          document.getElementById('stat-following-count').innerText = profileData.followingCount || 0;
-          CacheManager.set(CacheManager.KEYS.PROFILE, profileData);
-        }
+        document.getElementById('stat-recipes-count').innerText = allRecipes.length || 0;
 
         guestView.classList.add('hidden');
         loggedView.classList.remove('hidden');
       } catch (e) {
-        if (!cachedProfile) {
-          loggedView.classList.add('hidden');
-          guestView.classList.remove('hidden');
-        }
+        loggedView.classList.add('hidden');
+        guestView.classList.remove('hidden');
       } finally {
         lucide.createIcons();
       }
@@ -1716,7 +1160,6 @@
       document.getElementById('edit-category').value = recipe.category || 'almoço';
       document.getElementById('edit-prep-time').value = recipe.prepTimeMinutes || '';
       document.getElementById('edit-portions').value = recipe.portions || '';
-      document.getElementById('edit-visibility').value = (recipe.isPublic !== false) ? 'true' : 'false';
 
       document.getElementById('edit-ingredients').value = (recipe.ingredients || [])
         .map(i => `${i.quantity ? i.quantity + ' ' : ''}${i.unit ? i.unit + ' ' : ''}${i.name || ''}`.trim())
@@ -1742,7 +1185,6 @@
       const category = document.getElementById('edit-category').value;
       const prepTimeMinutes = parseInt(document.getElementById('edit-prep-time').value) || null;
       const portions = parseInt(document.getElementById('edit-portions').value) || null;
-      const isPublic = (document.getElementById('edit-visibility').value === 'true');
 
       const ingredientsLines = document.getElementById('edit-ingredients').value.split('\n').filter(l => l.trim().length > 0);
       const ingredients = ingredientsLines.map(line => ({ name: line.trim() }));
@@ -1754,7 +1196,7 @@
         const res = await fetch(`/api/recipes/${editingRecipeId}`, {
           method: 'PUT',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ title, category, prepTimeMinutes, portions, isPublic, ingredients, instructions })
+          body: JSON.stringify({ title, category, prepTimeMinutes, portions, ingredients, instructions })
         });
         if (res.ok) {
           closeEditModal();
